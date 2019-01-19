@@ -4,8 +4,9 @@ netbeans-project
 # class files
 *.class
 
-# anything inside src that isn't a .java file
+# anything inside src that isn't a .ci or .java file
 src/*
+!src/test-files
 !src/ast
 src/ast/*
 !src/comp
