@@ -1,9 +1,11 @@
+// LaboratÃ³rio de Compiladores - Nathan Eloy, Victor Watanabe
+
 package comp;
 
 /**
  * a compilation error
  * 
-   @author José
+   @author Josï¿½
  */
 public class CompilationError {
 

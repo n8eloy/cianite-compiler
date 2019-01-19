@@ -1,3 +1,5 @@
+// Laboratório de Compiladores - Nathan Eloy, Victor Watanabe
+
 package ast;
 
 abstract public class Type {

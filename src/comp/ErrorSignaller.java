@@ -1,3 +1,5 @@
+// Laboratório de Compiladores - Nathan Eloy, Victor Watanabe
+
 package comp;
 import java.io.PrintWriter;
 import java.util.ArrayList;

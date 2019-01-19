@@ -1,6 +1,5 @@
-/**
+// LaboratÃ³rio de Compiladores - Nathan Eloy, Victor Watanabe
 
- */
 package ast;
 
 import java.util.ArrayList;
@@ -13,7 +12,7 @@ import java.util.ArrayList;
  * end <br>
  * </code>
  *
-   @author José
+   @author Josï¿½
 
  */
 public class MetaobjectAnnotation {

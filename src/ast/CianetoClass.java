@@ -1,3 +1,5 @@
+// LaboratÃ³rio de Compiladores - Nathan Eloy, Victor Watanabe
+
 package ast;
 /*
  * Krakatoa Class
@@ -17,6 +19,6 @@ public class CianetoClass extends Type {
    private CianetoClass superclass;
    // private FieldList fieldList;
    // private MethodList publicMethodList, privateMethodList;
-   // métodos públicos get e set para obter e iniciar as variáveis acima,
-   // entre outros métodos
+   // mï¿½todos pï¿½blicos get e set para obter e iniciar as variï¿½veis acima,
+   // entre outros mï¿½todos
 }

@@ -1,3 +1,5 @@
+// Laboratório de Compiladores - Nathan Eloy, Victor Watanabe
+
 package ast;
 
 public class TypeInt extends Type {

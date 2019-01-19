@@ -1,0 +1,12 @@
+# class files
+*.class
+
+# anything inside src that isn't a .java file
+src/*
+!src/ast
+src/ast/*
+!src/comp
+src/comp/*
+!src/lexer
+src/lexer/*
+!*.java
