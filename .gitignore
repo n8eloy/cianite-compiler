@@ -1,12 +1,13 @@
-# NetBeans project folder
+# NetBeans or Eclipse project folder
 netbeans-project
+eclipse-project
 
-# class files
+# class and txt files
 *.class
+*.txt
 
-# anything inside src that isn't a .ci or .java file
+# anything inside src that isn't a .java file
 src/*
-!src/test-files
 !src/ast
 src/ast/*
 !src/comp
