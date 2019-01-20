@@ -144,6 +144,7 @@ public class Compiler {
 
 	private void classDec() {
 		if ( lexer.token == Token.ID && lexer.getStringValue().equals("open") ) {
+                    next();
 			// open class
 		}
 		if ( lexer.token != Token.CLASS ) error("'class' expected");
@@ -206,7 +207,8 @@ public class Compiler {
 		}
 		else if ( lexer.token == Token.IDCOLON ) {
 			// keyword method. It has parameters
-
+                        next();
+                        formalParamDec();
 		}
 		else {
 			error("An identifier or identifer: was expected after 'func'");
@@ -222,7 +224,7 @@ public class Compiler {
 		next();
 		statementList();
 		if ( lexer.token != Token.RIGHTCURBRACKET ) {
-			error("'{' expected");
+			error("'}' expected");
 		}
 		next();
 
@@ -252,9 +254,9 @@ public class Compiler {
 		case BREAK:
 			breakStat();
 			break;
-		case SEMICOLON:
-			next();
-			break;
+                //case SEMICOLON:
+                //        next();
+                //        break;
 		case REPEAT:
 			repeatStat();
 			break;
@@ -268,13 +270,17 @@ public class Compiler {
 			if ( lexer.token == Token.ID && lexer.getStringValue().equals("Out") ) {
 				writeStat();
 			}
-			else {
-				expr();
+                        else if (checkPass(Token.PLUS, Token.MINUS, Token.INT, 
+                                Token.BOOLEAN, Token.STRING, Token.LEFTPAR, 
+                                Token.NOT, Token.NULL, Token.ID, Token.SUPER,
+                                Token.SELF)) {
+				assignExpr();
 			}
 
 		}
 		if ( checkSemiColon ) {
 			check(Token.SEMICOLON, "';' expected");
+                        next();
 		}
 	}
 
@@ -282,14 +288,12 @@ public class Compiler {
 		next();
 		type();
 		check(Token.ID, "A variable name was expected");
-		while ( lexer.token == Token.ID ) {
-			next();
-			if ( lexer.token == Token.COMMA ) {
-				next();
-			}
-			else {
-				break;
-			}
+                next();
+                
+		while(checkPass(Token.COMMA)) {
+                    next();
+                    check(Token.ID, "A variable name was expected");
+                    next();
 		}
 		if ( lexer.token == Token.ASSIGN ) {
 			next();
@@ -360,10 +364,6 @@ public class Compiler {
 		expr();
 	}
 
-	private void expr() {
-
-	}
-
 	private void fieldDec() {
 		lexer.nextToken();
 		type();
@@ -397,7 +397,6 @@ public class Compiler {
 
 	}
 
-
 	private void qualifier() {
 		if ( lexer.token == Token.PRIVATE ) {
 			next();
@@ -429,7 +428,7 @@ public class Compiler {
 	 * uncomment it
 	 * implement the methods it calls
 	 */
-	public Statement assertStat() {
+	private Statement assertStat() {
 
 		lexer.nextToken();
 		int lineNumber = lexer.getLineNumber();
@@ -448,9 +447,6 @@ public class Compiler {
 
 		return null;
 	}
-
-
-
 
 	private LiteralInt literalInt() {
 
@@ -473,9 +469,275 @@ public class Compiler {
 				|| token == Token.ID || token == Token.LITERALSTRING;
 
 	}
-
-	private SymbolTable		symbolTable;
-	private Lexer			lexer;
-	private ErrorSignaller	signalError;
+        
+        // --------------------------------------------------- //
+        
+        // Returns true if token == any from shouldBeArray
+        private boolean checkPass(Token ... shouldBeArray) {
+            for (Token shouldBe:shouldBeArray) {
+                if (lexer.token == shouldBe)
+                    return true;
+            }
+            return false;
+        }
+        
+        // AssignExpr ::= Expression [ “=” Expression ]
+        private void assignExpr() {
+            expr();
+            
+            if(checkPass(Token.ASSIGN)) {
+                next();
+                expr();
+            }
+        }
+        
+        // CompStatement ::= “{” { Statement } “}”
+        private void compStatement() {
+            check(Token.LEFTCURBRACKET,"'{' expected");
+            next();
+            
+            while(checkPass(Token.IF, Token.WHILE, Token.RETURN, Token.BREAK, 
+                    Token.SEMICOLON, Token.REPEAT, Token.VAR, Token.ASSERT) ||
+                    (checkPass(Token.ID) && lexer.getStringValue().equals("Out"))){
+                statement();
+            }
+            
+            check(Token.RIGHTCURBRACKET,"'}' expected");
+            next();
+        }
+        
+        // Expression ::= SimpleExpression [ Relation SimpleExpression ]
+        private void expr() {
+            simpleExpr();
+            
+            if(checkPass(Token.EQ, Token.LT, Token.GT, Token.LE, Token.GE, Token.NEQ)) {
+                simpleExpr();
+            }
+        }
+        
+        // ExpressionList ::= Expression { “,” Expression }
+        private void exprList() {
+            expr();
+            
+            while(checkPass(Token.COMMA)) {
+                next();
+                expr();
+            }
+        }
+        
+        // Factor ::= BasicValue | “(” Expression “)” | “!” Factor | “nil” 
+        // | ObjectCreation | PrimaryExpr
+        // ObjectCreation syntatic analysis in primaryExpr() to solve ambiguity
+        private void factor() {
+            if(checkPass(Token.LEFTPAR)) {
+                next();
+                expr();
+                check(Token.RIGHTPAR, "')' expected");
+                next();
+            } else if(checkPass(Token.NOT)) {
+                next();
+                factor();
+            } else if(checkPass(Token.NULL)) {
+                next();
+            } else if(checkPass(Token.ID, Token.SELF, Token.SUPER)){
+                primaryExpr();
+            } else if(checkPass(Token.INT, Token.BOOLEAN, Token.STRING)) {
+                next();
+            } else {
+                error("Integer, boolean, string, identifier, '(', '!', 'nil', 'self' or 'super' expected");
+            }
+        }
+        
+        // FormalParamDec ::= ParamDec { “,” ParamDec }
+        private void formalParamDec() {
+            paramDec();
+            
+            while(checkPass(Token.COMMA)) {
+                next();
+                paramDec();
+            }
+        }
+        
+        // IdList ::= Id { “,” Id }
+        private void idList() {
+            check(Token.ID, "Identifier expected");
+            next();
+            
+            while(checkPass(Token.COMMA)) {
+                next();
+                paramDec();
+            }
+        }
+        
+        // Member ::= FieldDec | MethodDec
+        private void member() {
+            if(checkPass(Token.VAR)) {
+                fieldDec();
+            } else if(checkPass(Token.FUNC)) {
+                methodDec();
+            } else {
+                error("'var' or 'func' expected");
+            }
+        }
+        
+        // ObjectCreation ::= Id “.” “new”
+        // ObjectCreation syntatic analysis in primaryExpr() to solve ambiguity
+        private void objectCreation() {
+            //check(Token.ID, "Identifier expected");
+            //next();
+            //check(Token.DOT, "'.' expected");
+            //next();
+            check(Token.NEW, "'new' expected");
+            next();
+        }
+        
+        // ParamDec ::= Type Id
+        private void paramDec() {
+            type();
+            check(Token.ID, "Identifier expected");
+            next();
+        }
+        
+        // ReadExpr ::= “In” “.” ( “readInt” | “readString” )
+        // ReadExpr syntatic analysis in primaryExpr() to solve ambiguity
+        private void readExpr() {
+            //check(Token.ID, "Identifier expected");
+            //if(lexer.getStringValue().equals("In")) {
+            //    next();
+                
+            //    check(Token.DOT, "'.' expected");
+            //    next();
+                
+                check(Token.ID, "Identifier expected");
+                if(lexer.getStringValue().equals("readInt") || lexer.getStringValue().equals("readString")) {
+                    next();
+                } else {
+                    error("'readInt' or 'readString' expected");
+                }
+            //} else {
+            //    error("'In' expected");
+            //}
+        }
+        
+        // PrimaryExpr ::= “super” “.” IdColon ExpressionList |
+        // “super” “.” Id | Id | Id “.” Id | Id “.” IdColon ExpressionList |
+        // “self” | “self” “.” Id | “self” ”.” IdColon ExpressionList |
+        // “self” ”.” Id “.” IdColon ExpressionList | “self” ”.” Id “.” Id |
+        // ReadExpr
+        // ObjectCreation syntatic analysis in primaryExpr() to solve ambiguity
+        // ReadExpr syntatic analysis in primaryExpr() to solve ambiguity
+        private void primaryExpr() {
+            switch(lexer.token) {
+                case ID:
+                    next();
+                    
+                    if(checkPass(Token.DOT)) {
+                        next();
+                        
+                        if(checkPass(Token.ID)) {
+                            if(lexer.getStringValue().equals("new")) {
+                                objectCreation();
+                            } else if(lexer.getStringValue().equals("readInt") || lexer.getStringValue().equals("readString")) {
+                                readExpr();
+                            } else {
+                                next();
+                            }
+                        } else {
+                            check(Token.IDCOLON, "Identifier, identifer: or 'new' expected");
+                            next();
+                            exprList();
+                        }
+                    }
+                    break;
+                case SELF:
+                    next();
+                    
+                    if(checkPass(Token.DOT)) {
+                        next();
+                        
+                        if(checkPass(Token.ID)) {
+                            next();
+                            
+                            if(checkPass(Token.DOT)) {
+                                next();
+                                
+                                if(checkPass(Token.ID)) {
+                                    next();
+                                } else {
+                                    check(Token.IDCOLON, "Identifier or identifer: expected");
+                                    next();
+                                    exprList();
+                                }
+                            }
+                        } else {
+                            check(Token.IDCOLON, "Identifier or identifer: expected");
+                            next();
+                            exprList();
+                        }
+                    }
+                    break;
+                case SUPER:
+                    next();
+                    
+                    check(Token.DOT, "'.' expected");
+                    next();
+                    
+                    if (checkPass(Token.ID)) {
+                        next();
+                    } else {
+                        check(Token.IDCOLON, "Identifier or identifer: expected");
+                        next();
+                        exprList();
+                    }
+                    break;
+                default:
+                    error("Identifier, 'self' or 'super' expected");
+                    break;
+            }
+        }
+        
+        // SignalFactor ::= [ Signal ] Factor
+        private void signalFactor() {
+            if (checkPass(Token.PLUS, Token.MINUS)) {
+                next();
+            }
+            factor();
+        }
+        
+        // SimpleExpression ::= SumSubExpression { “++” SumSubExpression }
+        private void simpleExpr() {
+            sumSubExpr();
+            
+            while(checkPass(Token.COMCAT)) {
+                next();
+                sumSubExpr();
+            }
+        }
+        
+        // SumSubExpression ::= Term { LowOperator Term }
+        private void sumSubExpr() {
+            term();
+            
+            while(checkPass(Token.PLUS, Token.MINUS, Token.OR)) {
+                next();
+                term();
+            }
+        }
+        
+        // Term ::= SignalFactor { HighOperator SignalFactor }
+        private void term() {
+            signalFactor();
+            
+            while(checkPass(Token.MULT, Token.DIV, Token.AND)) {
+                next();
+                signalFactor();
+            }
+        }
+        
+        // --------------------------------------------------- //
+        
+	private SymbolTable     symbolTable;
+	private Lexer           lexer;
+	private ErrorSignaller  signalError;
 
 }
