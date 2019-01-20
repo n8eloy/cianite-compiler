@@ -46,9 +46,7 @@ class Head
         }
     }
     
-    func getNElements -> Int { return self.nElements; } 
-    
-    func insert: Int num {
+    func insert: Int num{
         self.nElements = self.nElements + 1;
         var Node aux;
         
@@ -57,7 +55,7 @@ class Head
         aux.setNumber: num;
         aux.setNext: nil;
         
-        if (self.first == nil) && (self.end2 == nil) {
+        if (self.first == nil) && (self.end2 == nil){
             self.first = aux;
         } 
         else {
@@ -67,6 +65,7 @@ class Head
         self.end2 = aux;
     }
     
+   
 end
 
 class Program
@@ -76,7 +75,7 @@ class Program
       var Int max;
       var Int aux;
       
-      aux = 0;
+      count = 0;
       max = 10;
       
       Out.println: "";
@@ -86,9 +85,9 @@ class Program
       head = Head.new;
       head.init;
       
-      while head.getNElements < max {
+      while head.nElements < max {
           aux = In.readInt;
-          head.insert: aux;
+          head.insert:aux;
       }
       
       head.print;

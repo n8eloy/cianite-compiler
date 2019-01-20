@@ -1,4 +1,4 @@
-@cep(5, "':' ausente na declaração do seletor",
+@cep(5, "';' na declaração de parâmetros",
   "'{' expected", "comp.Compiler.methodDec()")
 
 class Program 

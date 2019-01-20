@@ -7,7 +7,7 @@ ricardomlealjr@gmail.com
 /*
   @filename   ok-sin10.kra
 
-  @comment    Testa escrita com super e self (variaveis de instancia e metodos).
+  @comment    Testa escrita com super e this (variaveis de instancia e metodos).
   */
 open
 class A
@@ -32,9 +32,6 @@ class B extends A
         self.k = In.readInt;
         super.set: 0;
         Out.println: super.get;
-        Out.println: self.get;
-        Out.println: self.k;
-        Out.println: i;
     }
 
     public func print {

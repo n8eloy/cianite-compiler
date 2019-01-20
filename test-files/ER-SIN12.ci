@@ -3,8 +3,8 @@ João Paulo Francisco de Paula
 jpsobom@gmail.com
 */
 
-﻿@cep(8, "'{' usado em expressão", "Expression expected", "comp.Compiler.factor()")
-
+@cep(8, "'{' usado em expressao", "Expression expected", "comp.Compiler.factor()")
+﻿
 class Program
 
     func run {

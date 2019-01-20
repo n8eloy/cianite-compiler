@@ -4,8 +4,8 @@
 class Program 
   
     func run {
-        if a < b < c {
-            Out.println: a;
+        if 1 < 2 < 5{
+            Out.println: 3;
         }
                 
     }
