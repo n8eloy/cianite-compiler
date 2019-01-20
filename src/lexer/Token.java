@@ -11,6 +11,7 @@ public enum Token {
     BOOLEAN("Boolean"),
     BREAK("break"),
     CLASS("class"),
+    COMCAT("++"),
     COMMA(","),
     DIV("/"),
     DOT("."),
