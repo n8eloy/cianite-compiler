@@ -51,8 +51,6 @@ class Program
       else {
          return B.new;
       }
-
-      return nil;
    }   
    
    func run {

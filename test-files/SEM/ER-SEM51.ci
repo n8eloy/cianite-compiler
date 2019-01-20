@@ -17,7 +17,7 @@ class A
 end
 
 class B extends A
-    override func put: Int x, Int y, Int ok {
+    func put: Int x, Int y, Int ok {
     }
 end
 

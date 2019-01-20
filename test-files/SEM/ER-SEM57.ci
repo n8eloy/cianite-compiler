@@ -3,7 +3,10 @@ Giovana Vieira de Morais
 giovana.vmorais@gmail.com
 */
 
-@cep(16, "Testa se o compilador sinaliza erro nas comparações com '=='", "Incompatible types cannot be compared with '==' because the results will always be 'false'", "comp.Compiler.expr()")
+@cep(19, 
+    "Testa se o compilador sinaliza erro nas comparações com '=='", 
+    "Incompatible types cannot be compared with '==' because the results will always be 'false'",
+    "comp.Compiler.expr()")
 
 class A
 end
@@ -20,7 +23,7 @@ class Program
         b = nil;
 
         if a == b {
-         	Out.println: 0;   
+            Out.println: 0;   
         }
-	}
+    }
 end

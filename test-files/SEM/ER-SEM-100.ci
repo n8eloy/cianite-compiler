@@ -1,5 +1,8 @@
-﻿@cep(21, "variable 'error' not found", "", "")
-
+﻿/*
+Vitor Mesquita Fogaça
+vitor.fogaca@outlook.com
+*/
+      
 class Teste
     var Int n;
 	
@@ -12,6 +15,7 @@ class Teste
     }
 end
 
+@cep(7, "variable 'error' not found");
 class Program
     func run {
         var Teste t;

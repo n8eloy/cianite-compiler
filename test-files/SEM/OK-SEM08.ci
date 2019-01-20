@@ -32,16 +32,11 @@ end
 
 
 class B extends A 
-    
- 
 
    override   
    public func put: Int x, Int y, Boolean ok {
     
-       var Int a, b;
-       var Boolean c;
-
-      if ( (a + b) < 1) && !c  {
+      if ( (x + y) < 1) && !ok  {
          Out.print: 0;
       }
    }   

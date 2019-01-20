@@ -9,7 +9,7 @@
     @filename   ok-sem03.ci
 
     @comment    testa se o compilador aceita comparacoes com == e != com
-                Strings e null
+                Strings e nil
 */
 
 

@@ -79,7 +79,7 @@ class Program
           Out.println: ans;
       } 
       else {
-          if ans == 11 && nprov < 6 {
+          if (ans == 11) && (nprov < 6) {
               a = B.new;
               Out.println: (a.calculaNotaB: ntrab, nprov);
           } 
