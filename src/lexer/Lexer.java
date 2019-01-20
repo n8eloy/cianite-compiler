@@ -21,7 +21,7 @@ public class Lexer {
       }
 
 
-    private static final int MaxValueInteger = 32767;
+    private static final int MaxValueInteger = 2147483647;
       // contains the keywords
     static private Hashtable<String, Token> keywordsTable;
 
@@ -261,6 +261,7 @@ public class Lexer {
                 }
             }
           }
+        System.out.print(token.toString());
         beforeLastTokenPos = lastTokenPos;
     }
 
