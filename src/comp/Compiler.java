@@ -173,10 +173,10 @@ public class Compiler {
 		while ( true ) {
 			qualifier();
 			if ( lexer.token == Token.VAR ) {
-				fieldDec();
+				member();
 			}
 			else if ( lexer.token == Token.FUNC ) {
-				methodDec();
+				member();
 			}
 			else {
 				break;
@@ -187,6 +187,10 @@ public class Compiler {
 	private void error(String msg) {
 		this.signalError.showError(msg);
 	}
+        
+        private void error(String msg, boolean last) {
+		this.signalError.showError(msg, last);
+	}
 
 	private void next() {
 		lexer.nextToken();
@@ -195,6 +199,16 @@ public class Compiler {
 	private void check(Token shouldBe, String msg) {
 		if ( lexer.token != shouldBe ) {
 			error(msg);
+		}
+	}
+        
+        private void check(Token shouldBe, String msg, boolean last) {
+		if ( lexer.token != shouldBe ) {
+                    if (last) {
+                        error(msg, true);
+                    } else {
+			error(msg);
+                    }
 		}
 	}
 
@@ -227,12 +241,11 @@ public class Compiler {
 			error("'}' expected");
 		}
 		next();
-
 	}
 
 	private void statementList() {
-		  // only '}' is necessary in this test
-		while ( lexer.token != Token.RIGHTCURBRACKET && lexer.token != Token.END ) {
+		  // only '}', end and 'until' is necessary in this test
+		while ( !checkPass(Token.RIGHTCURBRACKET, Token.END, Token.UNTIL)) {
 			statement();
 		}
 	}
@@ -254,9 +267,8 @@ public class Compiler {
 		case BREAK:
 			breakStat();
 			break;
-                //case SEMICOLON:
-                //        next();
-                //        break;
+                case SEMICOLON:
+                        break;
 		case REPEAT:
 			repeatStat();
 			break;
@@ -275,7 +287,9 @@ public class Compiler {
                                 Token.NOT, Token.NULL, Token.ID, Token.SUPER,
                                 Token.SELF)) {
 				assignExpr();
-			}
+			} else {
+                            error("Statement expected");
+                        }
 
 		}
 		if ( checkSemiColon ) {
@@ -305,10 +319,13 @@ public class Compiler {
 
 	private void repeatStat() {
 		next();
-		while ( lexer.token != Token.UNTIL && lexer.token != Token.RIGHTCURBRACKET && lexer.token != Token.END ) {
-			statement();
-		}
+                //while ( lexer.token != Token.UNTIL && lexer.token != Token.RIGHTCURBRACKET && lexer.token != Token.END ) {
+                //        statement();
+                //}
+                statementList();
 		check(Token.UNTIL, "'until' was expected");
+                next();
+                expr();
 	}
 
 	private void breakStat() {
@@ -329,7 +346,8 @@ public class Compiler {
 		while ( lexer.token != Token.RIGHTCURBRACKET && lexer.token != Token.END ) {
 			statement();
 		}
-		check(Token.RIGHTCURBRACKET, "'}' was expected");
+		check(Token.RIGHTCURBRACKET, "'}' expected");
+                next();
 	}
 
 	private void ifStat() {
@@ -340,7 +358,8 @@ public class Compiler {
 		while ( lexer.token != Token.RIGHTCURBRACKET && lexer.token != Token.END && lexer.token != Token.ELSE ) {
 			statement();
 		}
-		check(Token.RIGHTCURBRACKET, "'}' was expected");
+		check(Token.RIGHTCURBRACKET, "'}' expected");
+                next();
 		if ( lexer.token == Token.ELSE ) {
 			next();
 			check(Token.LEFTCURBRACKET, "'{' expected after 'else'");
@@ -348,7 +367,8 @@ public class Compiler {
 			while ( lexer.token != Token.RIGHTCURBRACKET ) {
 				statement();
 			}
-			check(Token.RIGHTCURBRACKET, "'}' was expected");
+			check(Token.RIGHTCURBRACKET, "'}' expected");
+                        next();
 		}
 	}
 
@@ -357,31 +377,29 @@ public class Compiler {
 	 */
 	private void writeStat() {
 		next();
-		check(Token.DOT, "a '.' was expected after 'Out'");
+		check(Token.DOT, "'.' expected after 'Out'");
 		next();
-		check(Token.IDCOLON, "'print:' or 'println:' was expected after 'Out.'");
+		check(Token.IDCOLON, "'print:' or 'println:' expected after 'Out.'");
 		String printName = lexer.getStringValue();
+                next();
 		expr();
 	}
 
 	private void fieldDec() {
 		lexer.nextToken();
 		type();
-		if ( lexer.token != Token.ID ) {
-			this.error("A variable name was expected");
-		}
-		else {
-			while ( lexer.token == Token.ID  ) {
-				lexer.nextToken();
-				if ( lexer.token == Token.COMMA ) {
-					lexer.nextToken();
-				}
-				else {
-					break;
-				}
-			}
-		}
-
+                
+                check(Token.ID, "A variable name was expected");
+                next();
+                
+                while(checkPass(Token.COMMA)) {
+                    next();
+                    check(Token.ID, "Identifier expected");
+                    next();
+                }
+                                
+                check(Token.SEMICOLON, "';' expected");
+                next();
 	}
 
 	private void type() {
@@ -511,6 +529,7 @@ public class Compiler {
             simpleExpr();
             
             if(checkPass(Token.EQ, Token.LT, Token.GT, Token.LE, Token.GE, Token.NEQ)) {
+                next();
                 simpleExpr();
             }
         }
@@ -541,10 +560,11 @@ public class Compiler {
                 next();
             } else if(checkPass(Token.ID, Token.SELF, Token.SUPER)){
                 primaryExpr();
-            } else if(checkPass(Token.INT, Token.BOOLEAN, Token.STRING)) {
+            } else if(checkPass(Token.LITERALINT, Token.TRUE, Token.FALSE, Token.LITERALSTRING)) {
                 next();
             } else {
-                error("Integer, boolean, string, identifier, '(', '!', 'nil', 'self' or 'super' expected");
+                error("Expression expected");
+                //error("Factor (Literal int, boolean, literal string, identifier, '(', '!', 'nil', 'self' or 'super') expected");
             }
         }
         
@@ -634,10 +654,10 @@ public class Compiler {
                     if(checkPass(Token.DOT)) {
                         next();
                         
-                        if(checkPass(Token.ID)) {
-                            if(lexer.getStringValue().equals("new")) {
-                                objectCreation();
-                            } else if(lexer.getStringValue().equals("readInt") || lexer.getStringValue().equals("readString")) {
+                        if(checkPass(Token.NEW)) {
+                            objectCreation();
+                        } else if(checkPass(Token.ID)) {
+                            if(lexer.getStringValue().equals("readInt") || lexer.getStringValue().equals("readString")) {
                                 readExpr();
                             } else {
                                 next();
