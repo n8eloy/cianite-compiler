@@ -293,7 +293,7 @@ public class Compiler {
 
 		}
 		if ( checkSemiColon ) {
-			check(Token.SEMICOLON, "';' expected");
+			check(Token.SEMICOLON, "';' expected", true);
                         next();
 		}
 	}
@@ -386,7 +386,7 @@ public class Compiler {
                 
                 idList();
                                 
-                check(Token.SEMICOLON, "';' expected");
+                check(Token.SEMICOLON, "';' expected", true);
                 next();
 	}
 
