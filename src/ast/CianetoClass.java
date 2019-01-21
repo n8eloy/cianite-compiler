@@ -17,8 +17,8 @@ public class CianetoClass extends Type {
 
    private String name;
    private CianetoClass superclass;
-   // private FieldList fieldList;
-   // private MethodList publicMethodList, privateMethodList;
+   private Field[] fieldList;
+   private Method[] publicMethodList, privateMethodList;
    // m�todos p�blicos get e set para obter e iniciar as vari�veis acima,
    // entre outros m�todos
 }
