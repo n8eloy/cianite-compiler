@@ -3,7 +3,7 @@ Luciane Lopes
 luciane.silva@msn.com
 */
 
-@cep(11, "'until' ausente", 
+@cep(12, "'until' ausente", 
   "Statement expected", 
   "comp.Compiler.repeatStat()")
 

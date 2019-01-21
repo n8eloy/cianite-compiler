@@ -6,9 +6,9 @@ vinicius_salis@hotmail.com
 @cep(30, "Metodo 'se' nao declarado na classe do objeto b", "")
 
 class A
-    var Int num1
-    var Int num2
-    var Int result
+    var Int num1;
+    var Int num2;
+    var Int result;
      
     func mult -> Int { return self.num1 * self.num2; }
     func div: Int num3, Int num4 { self.result = num3 / num4; }
