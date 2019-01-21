@@ -1,4 +1,4 @@
-@cep(9, "falta ';' após a atribuição")
+@cep(9, "falta ';' após a atribuição", "';' missing")
 
 class Program
   

@@ -3,7 +3,7 @@ Luciane Lopes
 luciane.silva@msn.com
 */
 
-@cep(12, "'until' ausente", 
+@cep(11, "'until' ausente", 
   "Statement expected", 
   "comp.Compiler.repeatStat()")
 
@@ -14,7 +14,7 @@ class Program
         i = 0;
         repeat
             i = i + 1;
-        (i < 10);
+        (i < 10);   
     }
 
 end
