@@ -202,7 +202,7 @@ public class Compiler {
 		}
 	}
         
-        private void check(Token shouldBe, String msg, boolean last) {
+	private void check(Token shouldBe, String msg, boolean last) {
 		if ( lexer.token != shouldBe ) {
                     if (last) {
                         error(msg, true);
@@ -301,14 +301,9 @@ public class Compiler {
 	private void localDec() {
 		next();
 		type();
-		check(Token.ID, "A variable name was expected");
-                next();
+		
+                idList();
                 
-		while(checkPass(Token.COMMA)) {
-                    next();
-                    check(Token.ID, "A variable name was expected");
-                    next();
-		}
 		if ( lexer.token == Token.ASSIGN ) {
 			next();
 			// check if there is just one variable
@@ -389,14 +384,7 @@ public class Compiler {
 		lexer.nextToken();
 		type();
                 
-                check(Token.ID, "A variable name was expected");
-                next();
-                
-                while(checkPass(Token.COMMA)) {
-                    next();
-                    check(Token.ID, "Identifier expected");
-                    next();
-                }
+                idList();
                                 
                 check(Token.SEMICOLON, "';' expected");
                 next();
@@ -449,7 +437,7 @@ public class Compiler {
 	private Statement assertStat() {
 
 		lexer.nextToken();
-		int lineNumber = lexer.getLineNumber();
+		//int lineNumber = lexer.getLineNumber();
 		expr();
 		if ( lexer.token != Token.COMMA ) {
 			this.error("',' expected after the expression of the 'assert' statement");
@@ -458,35 +446,35 @@ public class Compiler {
 		if ( lexer.token != Token.LITERALSTRING ) {
 			this.error("A literal string expected after the ',' of the 'assert' statement");
 		}
-		String message = lexer.getLiteralStringValue();
+		//String message = lexer.getLiteralStringValue();
 		lexer.nextToken();
-		if ( lexer.token == Token.SEMICOLON )
-			lexer.nextToken();
+		//if ( lexer.token == Token.SEMICOLON )
+		//	lexer.nextToken();
 
 		return null;
 	}
 
-	private LiteralInt literalInt() {
+        //private LiteralInt literalInt() {
+        //
+        //        LiteralInt e = null;
+        //
+        //        // the number value is stored in lexer.getToken().value as an object of
+        //        // Integer.
+        //        // Method intValue returns that value as an value of type int.
+        //        int value = lexer.getNumberValue();
+        //        lexer.nextToken();
+        //        return new LiteralInt(value);
+        //}
 
-		LiteralInt e = null;
-
-		// the number value is stored in lexer.getToken().value as an object of
-		// Integer.
-		// Method intValue returns that value as an value of type int.
-		int value = lexer.getNumberValue();
-		lexer.nextToken();
-		return new LiteralInt(value);
-	}
-
-	private static boolean startExpr(Token token) {
-
-		return token == Token.FALSE || token == Token.TRUE
-				|| token == Token.NOT || token == Token.SELF
-				|| token == Token.LITERALINT || token == Token.SUPER
-				|| token == Token.LEFTPAR || token == Token.NULL
-				|| token == Token.ID || token == Token.LITERALSTRING;
-
-	}
+        //private static boolean startExpr(Token token) {
+        //
+        //        return token == Token.FALSE || token == Token.TRUE
+        //                        || token == Token.NOT || token == Token.SELF
+        //                        || token == Token.LITERALINT || token == Token.SUPER
+        //                        || token == Token.LEFTPAR || token == Token.NULL
+        //                        || token == Token.ID || token == Token.LITERALSTRING;
+        //
+        //}
         
         // --------------------------------------------------- //
         
@@ -510,19 +498,19 @@ public class Compiler {
         }
         
         // CompStatement ::= “{” { Statement } “}”
-        private void compStatement() {
-            check(Token.LEFTCURBRACKET,"'{' expected");
-            next();
-            
-            while(checkPass(Token.IF, Token.WHILE, Token.RETURN, Token.BREAK, 
-                    Token.SEMICOLON, Token.REPEAT, Token.VAR, Token.ASSERT) ||
-                    (checkPass(Token.ID) && lexer.getStringValue().equals("Out"))){
-                statement();
-            }
-            
-            check(Token.RIGHTCURBRACKET,"'}' expected");
-            next();
-        }
+        //private void compStatement() {
+        //    check(Token.LEFTCURBRACKET,"'{' expected");
+        //    next();
+        //
+        //    while(checkPass(Token.IF, Token.WHILE, Token.RETURN, Token.BREAK, 
+        //            Token.SEMICOLON, Token.REPEAT, Token.VAR, Token.ASSERT) ||
+        //            (checkPass(Token.ID) && lexer.getStringValue().equals("Out"))){
+        //        statement();
+        //    }
+        //
+        //    check(Token.RIGHTCURBRACKET,"'}' expected");
+        //    next();
+        //}
         
         // Expression ::= SimpleExpression [ Relation SimpleExpression ]
         private void expr() {
@@ -585,7 +573,8 @@ public class Compiler {
             
             while(checkPass(Token.COMMA)) {
                 next();
-                paramDec();
+                check(Token.ID, "Identifier expected");
+                next();
             }
         }
         
