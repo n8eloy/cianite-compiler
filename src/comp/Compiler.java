@@ -43,7 +43,7 @@ public class Compiler {
 				while ( lexer.token == Token.ANNOT ) {
 					metaobjectAnnotation(metaobjectCallList);
 				}
-				classDec();
+				CianetoClassList.add(classDec());
 			}
 			catch( CompilerError e) {
 				// if there was an exception, there is a compilation error
@@ -142,7 +142,7 @@ public class Compiler {
 		if ( getNextToken ) lexer.nextToken();
 	}
 
-	private void classDec() {
+	private CianetoClass classDec() {
 		if ( lexer.token == Token.ID && lexer.getStringValue().equals("open") ) {
                     next();
 			// open class
@@ -166,7 +166,7 @@ public class Compiler {
 		if ( lexer.token != Token.END)
 			error("'end' expected");
 		lexer.nextToken();
-
+            return(new CianetoClass(""));
 	}
 
 	private void memberList() {
