@@ -1,7 +1,7 @@
-@cep(9, "falta ';' apos a atribuicao", "';' missing")
+@cep(9, "falta ';' após a atribuição", "';' missing")
 
 class Program
-
+  
     func run {
 
         var Int i;

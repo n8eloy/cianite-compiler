@@ -4,7 +4,7 @@ luciane.silva@msn.com
 */
 
 @cep(12, "'until' ausente", 
-  "Statement expected", 
+  "'until' expected", 
   "comp.Compiler.repeatStat()")
 
 class Program
