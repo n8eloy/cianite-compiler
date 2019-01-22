@@ -385,9 +385,12 @@ public class Compiler {
 		type();
                 
                 idList();
-                                
-                check(Token.SEMICOLON, "';' expected", true);
-                next();
+                
+                if(checkPass(Token.SEMICOLON)) {
+                    next();
+                }
+                //check(Token.SEMICOLON, "';' expected", true);
+                //next();
 	}
 
 	private void type() {
