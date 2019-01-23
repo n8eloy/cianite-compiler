@@ -8,8 +8,8 @@ public class TypeInt extends Type {
         super("int");
     }
     
-   public String getCname() {
-      return "int";
-   }
+//   public String getCname() {
+//      return "int";
+//   }
 
 }

@@ -10,6 +10,7 @@ package ast;
  * @author natha
  */
 public enum Qualifier {
+    DE("default"), // Same as public, used for override control
     PR("private"),
     PU("public"),
     OV("override"),

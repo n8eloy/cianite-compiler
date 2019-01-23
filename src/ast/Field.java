@@ -1,14 +1,10 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+// Laboratório de Compiladores - Nathan Eloy, Victor Watanabe
+
 package ast;
 
-/**
- *
- * @author natha
- */
-public class Field {
+public class Field extends Member {
     
+    public Field(Qualifier qualifier, Type type, String identifier) {
+        super(qualifier, type, identifier);
+    }
 }

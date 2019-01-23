@@ -1,14 +1,32 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+// Laboratório de Compiladores - Nathan Eloy, Victor Watanabe
+
 package ast;
 
-/**
- *
- * @author natha
- */
-public class Method {
+import java.util.ArrayList;
+
+public class Method extends Member {
+    private ArrayList<Param> paramList;
+    private ArrayList<Statement> statList;
+
+    public Method(Qualifier qualifier, Type type, String identifier) {
+        super(qualifier, type, identifier);
+    }
+    
+    public ArrayList<Param> getParamList() {
+        return paramList;
+    }
+
+    public void setParamList(ArrayList<Param> paramList) {
+        this.paramList = paramList;
+    }
+
+    public ArrayList<Statement> getStatList() {
+        return statList;
+    }
+
+    public void setStatList(ArrayList<Statement> statList) {
+        this.statList = statList;
+    }
+    
     
 }

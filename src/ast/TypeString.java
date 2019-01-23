@@ -8,8 +8,8 @@ public class TypeString extends Type {
         super("String");
     }
     
-   public String getCname() {
-      return "char *";
-   }
+//   public String getCname() {
+//      return "char *";
+//   }
 
 }

@@ -8,9 +8,9 @@ public class TypeNull extends Type {
 		super("NullType");
 	}
 
-	@Override
-	public String getCname() {
-		return "NULL";
-	}
+//	@Override
+//	public String getCname() {
+//		return "NULL";
+//	}
 
 }
