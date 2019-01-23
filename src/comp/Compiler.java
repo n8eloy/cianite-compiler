@@ -166,7 +166,7 @@ public class Compiler {
                 
                 // Verifies if class exists
                 if (symbolTable.getInGlobal(className) != null) {
-                    error("Class '"+className+"' already defined");
+                    error("Class '"+className+"' already declared");
                 }
                 CianetoClass currClass = new CianetoClass(className, openClass);
                 // Puts class in global hashtable
@@ -182,7 +182,7 @@ public class Compiler {
                         // Verifies if superclass exists
                         CianetoClass superClass = (CianetoClass) symbolTable.getInGlobal(superclassName);
                         if (superClass == null) {
-                            error("Class '"+superclassName+"' not defined", true);
+                            error("Class '"+superclassName+"' not declared", true);
                         } else if (!superClass.isOpen()) {
                             error("Class '"+superclassName+"' not open", true);
                         } else {
@@ -266,51 +266,27 @@ public class Compiler {
             }
             String identifier = lexer.getStringValue();
             
+            if(symbolTable.getInClass(identifier) != null) {
+                error("'"+identifier+"' already declared");
+            }
+            
+            CianetoClass superClass = currClass.getSuperclass();
+            if(superClass != null) {
+                if(superClass.findPublicMethod(identifier) != null) {
+                    if(qualifier != Qualifier.OV && qualifier != Qualifier.OVPU) {
+                        error("Overriding superclass '"+superClass.getName()+"' method without 'override' qualifier before method");
+                    }
+                }
+            }
+            
             // Verifying qualifier
             if(!currClass.isOpen()) {
                 if(qualifier == Qualifier.FI || qualifier == Qualifier.FIPU ||
                     qualifier == Qualifier.FIOV || qualifier == Qualifier.FIOVPU) {
-                    error("Final classes cannot declare final methods");
+                    error("Final class '"+currClass.getName()+"' is not allowed to declare final methods");
                 }
             }
-            
-            // Overriding
-            if(qualifier == Qualifier.OV || qualifier == Qualifier.OVPU ||
-                qualifier == Qualifier.FIOV || qualifier == Qualifier.FIOVPU ) {
-                CianetoClass parent;
-                if((parent = currClass.getSuperclass()) != null) {
-                    boolean found = false;
-                    
-                    // Searches all parents
-                    while(parent != null && found == false) {
-                        Method parentMethod;
                         
-                        if((parentMethod = parent.findPublicMethod(identifier)) != null) {
-                            // Method found in parent class
-                            found = true;
-                            Qualifier parentQualifier = parentMethod.getQualifier();
-                            
-                            if (parentQualifier == Qualifier.PU) {
-                                if (!(qualifier == Qualifier.OVPU || qualifier == Qualifier.FIOVPU)) {
-                                    error("Override impossible, superclass class method has 'public', overriding method shall have 'override public'");
-                                }
-                            } else if (parentQualifier == Qualifier.FI ||
-                                    parentQualifier == Qualifier.FIPU ||
-                                    parentQualifier == Qualifier.FIOV ||
-                                    parentQualifier == Qualifier.FIOVPU) {
-                                error("Override impossible, superclass method is final");
-                            }
-                        }
-                        parent = parent.getSuperclass();
-                    }
-                    if(!found) {
-                        error("Override impossible, no public method was found in preceding superclasses");
-                    }
-                } else {
-                    error("Override impossible, class has no superclass");
-                }
-            }
-            
             Method method = new Method(qualifier, Type.nullType, identifier);
             symbolTable.putInClass(identifier, method);
             if(qualifier == Qualifier.PR) {
@@ -330,6 +306,62 @@ public class Compiler {
                 // method declared a return type
                 lexer.nextToken();
                 method.setType(type());
+            }
+            
+            
+            // Overriding
+            if(qualifier == Qualifier.OV || qualifier == Qualifier.OVPU ||
+                qualifier == Qualifier.FIOV || qualifier == Qualifier.FIOVPU ) {
+                CianetoClass parent;
+                if((parent = currClass.getSuperclass()) != null) {
+                    boolean found = false;
+                    
+                    // Searches all parents
+                    while(parent != null && found == false) {
+                        Method parentMethod;
+                        
+                        if((parentMethod = parent.findPublicMethod(identifier)) != null) {
+                            // Method found in parent class
+                            found = true;
+                            Qualifier parentQualifier = parentMethod.getQualifier();
+                            
+                            if(method.getType() != parentMethod.getType()) {
+                                error("Overriding '"+parent.getName()+"' method '"+parentMethod.getIdentifier()+"' is impossible, methods have different return types");
+                            } else {
+                                if((method.getParamList() != null && parentMethod.getParamList() != null) &&(!method.getParamList().isEmpty() && !parentMethod.getParamList().isEmpty())){
+                                    if(method.getParamList().size() == parentMethod.getParamList().size()) {
+                                        for(int i=1; i < method.getParamList().size(); i++) {
+                                            if(method.getParamList().get(i).getType() != parentMethod.getParamList().get(i).getType()) {
+                                                error("Overriding '"+parent.getName()+"' method '"+parentMethod.getIdentifier()+"' is impossible, methods have different signatures");
+                                            }
+                                        }
+                                    } else {
+                                        error("Overriding '"+parent.getName()+"' method '"+parentMethod.getIdentifier()+"' is impossible, methods have different signature sizes");
+                                    }
+                                }
+                            }
+                            
+                            if (parentQualifier == Qualifier.PU) {
+                                if (!(qualifier == Qualifier.OVPU || qualifier == Qualifier.FIOVPU)) {
+                                    //error("Overriding '"+parent.getName()+"' method '"+parentMethod.getIdentifier()+"' is impossible, superclass class method has explicit qualifier 'public', overriding method should have explicit qualifier 'override public'");
+                                }
+                            } else if (parentQualifier == Qualifier.FI ||
+                                    parentQualifier == Qualifier.FIPU ||
+                                    parentQualifier == Qualifier.FIOV ||
+                                    parentQualifier == Qualifier.FIOVPU) {
+                                error("Overriding '"+parent.getName()+"' method '"+parentMethod.getIdentifier()+"' is impossible, superclass method is final");
+                            }
+                            
+                            
+                        }
+                        parent = parent.getSuperclass();
+                    }
+                    if(!found) {
+                        error("Overriding a method '"+identifier+"' is impossible, no public method was found in preceding superclasses");
+                    }
+                } else {
+                    error("Overriding a method '"+identifier+"' is impossible, class has no superclass");
+                }
             }
 
             if ( lexer.token != Token.LEFTCURBRACKET ) {
@@ -428,13 +460,13 @@ public class Compiler {
 			Type exprType = expr();
                         
                         if(exprType != type) {
-                            error("Invalid type: "+type.getName()+" expected");
+                            error("Invalid type: '"+type.getName()+"' expected");
                         }
 		}
 
                 for (String id : idList) {
                     if(symbolTable.getInLocal(id) != null) {
-                        error("'"+id+"' already defined");
+                        error("'"+id+"' already declared");
                     } else {
                         Variable newVar = new Variable(type, id);
                         symbolTable.putInLocal(id, newVar);
@@ -450,6 +482,9 @@ public class Compiler {
                 //        statement();
                 //}
                 RepeatStatement repeatStat = new RepeatStatement(statementList());
+                if(highestAboveStatement == null) {
+                    highestAboveStatement = repeatStat;
+                }
 		check(Token.UNTIL, "'until' was expected");
                 next();
                 Type type = expr();
@@ -458,11 +493,17 @@ public class Compiler {
                     error("Boolean type expected");
                 }
                 
+                if(highestAboveStatement == repeatStat) {
+                    highestAboveStatement = null;
+                }
                 return(repeatStat);
 	}
 
 	private Statement breakStat() {
             next();
+            if(highestAboveStatement == null) {
+                error("'break' outside repetition statement");
+            }
             return(new BreakStatement());
 	}
 
@@ -480,6 +521,9 @@ public class Compiler {
 	private Statement whileStat() {
 		next();
                 WhileStatement whileStat = new WhileStatement();
+                if(highestAboveStatement == null) {
+                    highestAboveStatement = whileStat;
+                }
 		Type type = expr();
                 
                 if(type != Type.booleanType) {
@@ -493,6 +537,10 @@ public class Compiler {
 		}
 		check(Token.RIGHTCURBRACKET, "'}' expected");
                 next();
+                
+                if(highestAboveStatement == whileStat) {
+                    highestAboveStatement = null;
+                }
                 return(whileStat);
 	}
 
@@ -560,7 +608,7 @@ public class Compiler {
                 ArrayList<Member> fieldList = new ArrayList<>();
                 for (String id : idList) {
                     if(symbolTable.getDownTop(id) != null) {
-                        error("'"+id+"' already defined");
+                        error("'"+id+"' already declared");
                     } else {
                         Field newField = new Field(qualifier, type, id);
                         fieldList.add(newField);
@@ -602,7 +650,7 @@ public class Compiler {
                     CianetoClass currClass = (CianetoClass) symbolTable.getInGlobal(className);
                     
                     if (currClass == null) {
-                        this.error("Class '"+className+"' not defined");
+                        this.error("Class '"+className+"' not declared");
                     }
                     
                     return(currClass);
@@ -717,7 +765,7 @@ public class Compiler {
                 Type rtype = expr();
                 
                 if((ltype.getClass() != CianetoClass.class && ltype != rtype) || (ltype == Type.nullType)) {
-                    error("Invalid assignment between types");
+                    error("Invalid assignment between types '"+ltype.getName()+"' and '"+rtype.getName()+"'");
                 } else if (ltype.getClass() == CianetoClass.class && rtype.getClass() == CianetoClass.class) {
                     CianetoClass lclass = (CianetoClass) ltype;
                     CianetoClass rclass = (CianetoClass) rtype;
@@ -731,7 +779,7 @@ public class Compiler {
                     }
                     
                     if(!found) {
-                        error("Invalid assignment between unrelated classes");
+                        error("Invalid assignment between unrelated classes '"+lclass.getName()+"' and '"+rclass.getName()+"'");
                     }
                 }
             }
@@ -765,7 +813,7 @@ public class Compiler {
                 if (relation == Token.LT || relation == Token.GT || 
                     relation == Token.LE || relation == Token.GE) {
                     if (ltype != Type.intType || rtype != Type.intType) {
-                        error("Invalid type for comparison: Int expected");
+                        error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for comparison: Int expected");
                     } else {
                         return(Type.booleanType);
                     }
@@ -790,10 +838,10 @@ public class Compiler {
                         if(found) {
                             return(Type.booleanType);
                         } else {
-                            error("Invalid classes for comparison");
+                            error("Invalid classes '"+lclass.getName()+"' and '"+rclass.getName()+"' for comparison");
                         }
                     } else {
-                        error("Invalid type for comparison");
+                        error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for comparison");
                     }
                 }
             }
@@ -825,10 +873,13 @@ public class Compiler {
         // | ObjectCreation | PrimaryExpr
         // ObjectCreation syntatic analysis in primaryExpr() to solve ambiguity
         private Type factor() {
+            System.out.print("   <2>   ");
             Type type = Type.undefinedType;
             if(checkPass(Token.LEFTPAR)) {
+                System.out.print("   <3>   ");
                 next();
                 type = expr();
+                System.out.print("   <4>   ");
                 check(Token.RIGHTPAR, "')' expected");
                 next();
             } else if(checkPass(Token.NOT)) {
@@ -842,6 +893,7 @@ public class Compiler {
                 next();
                 type = Type.nullType;
             } else if(checkPass(Token.ID, Token.SELF, Token.SUPER)){
+                System.out.print("   <4>   ");
                 return(primaryExpr());
             } else if(checkPass(Token.LITERALINT, Token.TRUE, Token.FALSE, Token.LITERALSTRING)) {
                 switch(lexer.token) {
@@ -863,6 +915,7 @@ public class Compiler {
                 error("Expression expected");
                 //error("Factor (Literal int, boolean, literal string, identifier, '(', '!', 'nil', 'self' or 'super') expected");
             }
+            System.out.print("   <5>   ");
             return(type);
         }
         
@@ -1032,7 +1085,7 @@ public class Compiler {
                                 methodFound = classFound.findOutMethod(methodId);
 
                                 if(methodFound == null) {
-                                    error("Class '"+instanceId+"' or superclass has no public method '"+methodId+"'");
+                                    error("Class '"+classFound.getName()+"' or superclass has no public method '"+methodId+"'");
                                 } else {
                                     type = methodFound.getType();
                                 }
@@ -1181,7 +1234,11 @@ public class Compiler {
                 }
                 return(type);
             } else {
-                return(factor());
+                
+                System.out.print("   <1>   ");
+                Type f = factor();
+                System.out.print("   <1.2>   ");
+                return(f);
             }
         }
         
@@ -1195,7 +1252,7 @@ public class Compiler {
                 if((ltype == Type.intType || ltype == Type.stringType) && (rtype == Type.intType || rtype == Type.stringType)) {
                     ltype = Type.stringType;
                 } else {
-                    error("Invalid types ("+ltype.getName()+", "+rtype.getName()+") for concatenation: Int or String expected");
+                    error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for concatenation: Int or String expected");
                 }
             }
             return(ltype);
@@ -1213,13 +1270,13 @@ public class Compiler {
                     if(ltype == Type.intType && rtype == Type.intType) {
                         return(Type.intType);
                     } else {
-                        error("Invalid type for operation: Int expected");
+                        error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for operation: Int expected");
                     }
                 } else {
                     if(ltype == Type.booleanType && rtype == Type.booleanType) {
                         return(Type.booleanType);
                     } else {
-                        error("Invalid type for operation: Boolean expected");
+                        error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for operation: Boolean expected");
                     }
                 }
             }
@@ -1229,7 +1286,9 @@ public class Compiler {
         // Term ::= SignalFactor { HighOperator SignalFactor }
         private Type term() {
             Type ltype = signalFactor();
+            System.out.print("   <5.5>   ");
             while(checkPass(Token.MULT, Token.DIV, Token.AND)) {
+                System.out.print("   <6>   ");
                 Token relation = lexer.token;
                 next();
                 Type rtype = signalFactor();
@@ -1238,13 +1297,13 @@ public class Compiler {
                     if(ltype == Type.intType && rtype == Type.intType) {
                         return(Type.intType);
                     } else {
-                        error("Invalid type for operation: Int expected");
+                        error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for operation: Int expected");
                     }
                 } else {
                     if(ltype == Type.booleanType && rtype == Type.booleanType) {
                         return(Type.booleanType);
                     } else {
-                        error("Invalid type for operation: Boolean expected");
+                        error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for operation: Boolean expected");
                     }
                 }
             }
@@ -1258,5 +1317,6 @@ public class Compiler {
 	private ErrorSignaller  signalError;
         private CianetoClass    currentClass;
         private Method          currentMethod;
+        private Statement       highestAboveStatement = null;
 
 }
