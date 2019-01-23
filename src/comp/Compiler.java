@@ -60,6 +60,19 @@ public class Compiler {
 			}
 
 		}
+                
+                CianetoClass progClass = (CianetoClass) symbolTable.getInGlobal("Program");
+                if(progClass != null) {
+                    Method runMethod = progClass.findPublicMethod("run");
+                    if(runMethod == null) {
+                        error("No method 'run' was declared in 'Program'");
+                    } else if(runMethod.getType() != Type.nullType) {
+                        error("Method 'run' must have no return");
+                    }
+                } else {
+                    error("No class 'Program' was declared");
+                }
+                
 		if ( !thereWasAnError && lexer.token != Token.EOF ) {
 			try {
 				error("End of file expected");
@@ -155,51 +168,52 @@ public class Compiler {
                 if (symbolTable.getInGlobal(className) != null) {
                     error("Class '"+className+"' already defined");
                 }
-                
                 CianetoClass currClass = new CianetoClass(className, openClass);
                 // Puts class in global hashtable
                 symbolTable.putInGlobal(className, currClass);
+                currentClass = currClass;
                 
 		if ( lexer.token == Token.EXTENDS ) {
 			lexer.nextToken();
 			if ( lexer.token != Token.ID )
 				error("Identifier expected");
                         String superclassName = lexer.getStringValue();
-                        lexer.nextToken();
-                        
+                                                
                         // Verifies if superclass exists
-                        CianetoClass superClass = (CianetoClass) symbolTable.getInClass(superclassName);
+                        CianetoClass superClass = (CianetoClass) symbolTable.getInGlobal(superclassName);
                         if (superClass == null) {
-                            error("Class '"+superclassName+"' not defined");
+                            error("Class '"+superclassName+"' not defined", true);
                         } else if (!superClass.isOpen()) {
-                            error("Class '"+superclassName+"' not open");
+                            error("Class '"+superclassName+"' not open", true);
                         } else {
                             currClass.setSuperclass(superClass);
                         }
+                        
+                        lexer.nextToken();
 		}
-
 		ArrayList<Member> memberList = memberList(currClass);
-                
-                for(Member m : memberList) {
-                    if (m.getClass() == Field.class) {
-                        if (m.getQualifier() == Qualifier.PR) {
-                            currClass.addPrivateField((Field) m);
-                        } else {
-                            currClass.addPublicField((Field) m);
-                        }
-                    } else {
-                        if (m.getQualifier() == Qualifier.PR) {
-                            currClass.addPrivateMethod((Method) m);
-                        } else {
-                            currClass.addPublicMethod((Method) m);
-                        }
-                    }
-                }
-                
+//                if(memberList != null && !memberList.isEmpty()) {
+//                    for(Member m : memberList) {
+//                        if (m.getClass() == Field.class) {
+//                            if (m.getQualifier() == Qualifier.PR) {
+//                                currClass.addPrivateField((Field) m);
+//                            } else {
+//                                currClass.addPublicField((Field) m);
+//                            }
+//                        } else {
+//                            if (m.getQualifier() == Qualifier.PR) {
+//                                currClass.addPrivateMethod((Method) m);
+//                            } else {
+//                                currClass.addPublicMethod((Method) m);
+//                            }
+//                        }
+//                    }
+//                }
 		if ( lexer.token != Token.END)
                     error("'end' expected");
 		lexer.nextToken();
                 symbolTable.eraseClass();
+                currentClass = null;
                 return(currClass);
 	}
 
@@ -248,7 +262,7 @@ public class Compiler {
             lexer.nextToken();
 
             if (!(lexer.token == Token.ID || lexer.token == Token.IDCOLON) ){
-                error("An identifier or identifer: was expected after 'func'");
+                error("An identifier or identifier: was expected after 'func'");
             }
             String identifier = lexer.getStringValue();
             
@@ -297,8 +311,13 @@ public class Compiler {
                 }
             }
             
-            Method method = new Method(qualifier, new TypeNull(), identifier);
+            Method method = new Method(qualifier, Type.nullType, identifier);
             symbolTable.putInClass(identifier, method);
+            if(qualifier == Qualifier.PR) {
+                currentClass.addPrivateMethod(method);
+            } else {
+                currentClass.addPublicMethod(method);
+            }
 
             if ( lexer.token == Token.IDCOLON ) {
                 next();
@@ -317,15 +336,22 @@ public class Compiler {
                 error("'{' expected");
             }
             next();
-
+            
+            currentMethod = method;
             method.setStatList(statementList());
 
             if ( lexer.token != Token.RIGHTCURBRACKET ) {
                     error("'}' expected");
             }
-
+            
+            // Verifies if return is necessary and present
+            if(currentMethod.getType() != Type.nullType && !currentMethod.isReturnDefined()) {
+                error("Return expected");
+            }
+                    
             // At end of func, all locals must be erased
             symbolTable.eraseLocal();
+            currentMethod = null;
             next();                
 
             return(method);
@@ -341,7 +367,7 @@ public class Compiler {
 	}
 
 	private Statement statement() {
-            Statement statement;
+            Statement statement = null;
             boolean checkSemiColon = true;
             switch ( lexer.token ) {
             case IF:
@@ -371,13 +397,13 @@ public class Compiler {
                 break;
             default:
                 if ( lexer.token == Token.ID && lexer.getStringValue().equals("Out") ) {
-                    writeStat();
+                    statement = writeStat();
                 }
                 else if (checkPass(Token.PLUS, Token.MINUS, Token.INT, 
                     Token.BOOLEAN, Token.STRING, Token.LEFTPAR, 
                     Token.NOT, Token.NULL, Token.ID, Token.SUPER,
                     Token.SELF)) {
-                    assignExpr();
+                    statement = assignExpr();
                 } else {
                     error("Statement expected");
                 }
@@ -387,62 +413,102 @@ public class Compiler {
                 check(Token.SEMICOLON, "';' expected", true);
                 next();
             }
+            return(statement);
 	}
 
-	private void localDec() {
+	private Statement localDec() {
 		next();
-		type();
+		Type type = type();
 		
-                idList();
+                ArrayList<String> idList = idList();
                 
 		if ( lexer.token == Token.ASSIGN ) {
 			next();
 			// check if there is just one variable
-			expr();
+			Type exprType = expr();
+                        
+                        if(exprType != type) {
+                            error("Invalid type: "+type.getName()+" expected");
+                        }
 		}
 
+                for (String id : idList) {
+                    if(symbolTable.getInLocal(id) != null) {
+                        error("'"+id+"' already defined");
+                    } else {
+                        Variable newVar = new Variable(type, id);
+                        symbolTable.putInLocal(id, newVar);
+                    }
+                }
+                
+                return(new LocalDecStatement());
 	}
 
-	private void repeatStat() {
+	private RepeatStatement repeatStat() {
 		next();
                 //while ( lexer.token != Token.UNTIL && lexer.token != Token.RIGHTCURBRACKET && lexer.token != Token.END ) {
                 //        statement();
                 //}
-                statementList();
+                RepeatStatement repeatStat = new RepeatStatement(statementList());
 		check(Token.UNTIL, "'until' was expected");
                 next();
-                expr();
+                Type type = expr();
+                
+                if(type != Type.booleanType) {
+                    error("Boolean type expected");
+                }
+                
+                return(repeatStat);
 	}
 
-	private void breakStat() {
-		next();
-
+	private Statement breakStat() {
+            next();
+            return(new BreakStatement());
 	}
 
-	private void returnStat() {
+	private Statement returnStat() {
 		next();
-		expr();
+                Type returnType = expr();
+                
+                if (currentMethod.getType() != returnType) {
+                    error("Invalid return type: "+currentMethod.getType()+" expected");
+                }
+                currentMethod.setReturnDefined(true);
+                return(new ReturnStatement(returnType));
 	}
 
-	private void whileStat() {
+	private Statement whileStat() {
 		next();
-		expr();
+                WhileStatement whileStat = new WhileStatement();
+		Type type = expr();
+                
+                if(type != Type.booleanType) {
+                    error("Boolean type expected");
+                }
+                
 		check(Token.LEFTCURBRACKET, "'{' expected after the 'while' expression");
 		next();
 		while ( lexer.token != Token.RIGHTCURBRACKET && lexer.token != Token.END ) {
-			statement();
+			whileStat.addStatement(statement());
 		}
 		check(Token.RIGHTCURBRACKET, "'}' expected");
                 next();
+                return(whileStat);
 	}
 
-	private void ifStat() {
+	private Statement ifStat() {
 		next();
-		expr();
+		IfStatement ifStat = new IfStatement();
+                Type type = expr();
+                
+                if(type != Type.booleanType) {
+                    error("Boolean type expected");
+                }
+                                
 		check(Token.LEFTCURBRACKET, "'{' expected after the 'if' expression");
 		next();
 		while ( lexer.token != Token.RIGHTCURBRACKET && lexer.token != Token.END && lexer.token != Token.ELSE ) {
-			statement();
+			ifStat.setIfStat(statement());
 		}
 		check(Token.RIGHTCURBRACKET, "'}' expected");
                 next();
@@ -451,24 +517,34 @@ public class Compiler {
 			check(Token.LEFTCURBRACKET, "'{' expected after 'else'");
 			next();
 			while ( lexer.token != Token.RIGHTCURBRACKET ) {
-				statement();
+				ifStat.setElseStat(statement());
 			}
 			check(Token.RIGHTCURBRACKET, "'}' expected");
                         next();
 		}
+                return(ifStat);
 	}
 
 	/**
 
 	 */
-	private void writeStat() {
+	private Statement writeStat() {
 		next();
 		check(Token.DOT, "'.' expected after 'Out'");
 		next();
 		check(Token.IDCOLON, "'print:' or 'println:' expected after 'Out.'");
 		String printName = lexer.getStringValue();
                 next();
-		expr();
+                
+                if(!(printName.equals("print:") || printName.equals("println:"))) {
+                    error("'print:' or 'println:' expected after 'Out.'");
+                }
+                
+		Type type = expr();
+                if((type != Type.stringType) && (type != Type.intType)) {
+                    error("Invalid type: Int or String expected");
+                }
+                return (new WriteStatement());
 	}
 
 	private ArrayList<Member> fieldDec(Qualifier qualifier) {
@@ -480,11 +556,7 @@ public class Compiler {
 		Type type = type();
                 
                 ArrayList<String> idList = idList();
-                
-                if(checkPass(Token.SEMICOLON)) {
-                    next();
-                }
-                
+                                
                 ArrayList<Member> fieldList = new ArrayList<>();
                 for (String id : idList) {
                     if(symbolTable.getDownTop(id) != null) {
@@ -493,7 +565,17 @@ public class Compiler {
                         Field newField = new Field(qualifier, type, id);
                         fieldList.add(newField);
                         symbolTable.putInClass(id, newField);
+                        
+                        if(qualifier == Qualifier.PR) {
+                            currentClass.addPrivateField(newField);
+                        } else {
+                            currentClass.addPublicField(newField);
+                        }
                     }
+                }
+                
+                if(checkPass(Token.SEMICOLON)) {
+                    next();
                 }
                 //check(Token.SEMICOLON, "';' expected", true);
                 //next();
@@ -505,13 +587,13 @@ public class Compiler {
             switch(lexer.token) {
                 case INT:
                     next();
-                    return(new TypeInt());
+                    return(Type.intType);
                 case BOOLEAN:
                     next();
-                    return(new TypeBoolean());
+                    return(Type.booleanType);
                 case STRING:
                     next();
-                    return(new TypeString());
+                    return(Type.stringType);
                 case ID:
                     String className = lexer.getStringValue();
                     next();
@@ -526,12 +608,12 @@ public class Compiler {
                     return(currClass);
                 default:
                     this.error("A type was expected");
-                    return(null);
+                    return(Type.undefinedType);
             }
 	}
 
 	private Qualifier qualifier() {
-            Qualifier qualifier = Qualifier.PU;
+            Qualifier qualifier = Qualifier.DE;
             
             if ( lexer.token == Token.PRIVATE ) {
                 next();
@@ -627,13 +709,33 @@ public class Compiler {
         }
         
         // AssignExpr ::= Expression [ “=” Expression ]
-        private void assignExpr() {
-            expr();
+        private AssignStatement assignExpr() {
+            Type ltype = expr();
             
             if(checkPass(Token.ASSIGN)) {
                 next();
-                expr();
+                Type rtype = expr();
+                
+                if((ltype.getClass() != CianetoClass.class && ltype != rtype) || (ltype == Type.nullType)) {
+                    error("Invalid assignment between types");
+                } else if (ltype.getClass() == CianetoClass.class && rtype.getClass() == CianetoClass.class) {
+                    CianetoClass lclass = (CianetoClass) ltype;
+                    CianetoClass rclass = (CianetoClass) rtype;
+                    boolean found = false;
+
+                    while(rclass != null && found == false) {
+                        if(lclass.getName().equals(rclass.getName())) {
+                            found = true;
+                        }
+                        rclass = rclass.getSuperclass();
+                    }
+                    
+                    if(!found) {
+                        error("Invalid assignment between unrelated classes");
+                    }
+                }
             }
+            return new AssignStatement();
         }
         
         // CompStatement ::= “{” { Statement } “}”
@@ -652,47 +754,116 @@ public class Compiler {
         //}
         
         // Expression ::= SimpleExpression [ Relation SimpleExpression ]
-        private void expr() {
-            simpleExpr();
+        private Type expr() {            
+            Type ltype = simpleExpr();
             
             if(checkPass(Token.EQ, Token.LT, Token.GT, Token.LE, Token.GE, Token.NEQ)) {
+                Token relation = lexer.token;
                 next();
-                simpleExpr();
+                Type rtype = simpleExpr();
+                
+                if (relation == Token.LT || relation == Token.GT || 
+                    relation == Token.LE || relation == Token.GE) {
+                    if (ltype != Type.intType || rtype != Type.intType) {
+                        error("Invalid type for comparison: Int expected");
+                    } else {
+                        return(Type.booleanType);
+                    }
+                } else if (relation == Token.EQ || relation == Token.NEQ) {
+                    if ((ltype == Type.stringType && rtype == Type.stringType) ||
+                        (ltype == Type.intType && rtype == Type.intType) ||
+                        (ltype == Type.booleanType && rtype == Type.booleanType) ||
+                        ((ltype == Type.stringType || rtype == Type.stringType) && (ltype == Type.nullType || rtype == Type.nullType))) {
+                        return(Type.booleanType);
+                    } else if ((ltype.getClass() == CianetoClass.class) && (rtype.getClass() == CianetoClass.class)) {
+                        CianetoClass lclass = (CianetoClass) ltype;
+                        CianetoClass rclass = (CianetoClass) rtype;
+                        boolean found = false;
+                        
+                        while(rclass != null && found == false) {
+                            if(lclass.getName().equals(rclass.getName())) {
+                                found = true;
+                            }
+                            rclass = rclass.getSuperclass();
+                        }
+                        
+                        if(found) {
+                            return(Type.booleanType);
+                        } else {
+                            error("Invalid classes for comparison");
+                        }
+                    } else {
+                        error("Invalid type for comparison");
+                    }
+                }
             }
+            
+            return (ltype);
         }
         
         // ExpressionList ::= Expression { “,” Expression }
-        private void exprList() {
-            expr();
+        private void exprList(Method m) {
+            int paramIndex = 0;
+            Type type = expr();
+            ArrayList<Param> paramList = m.getParamList();
+            
+            if(paramList.get(paramIndex).getType() != type) {
+                error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected");
+            }
             
             while(checkPass(Token.COMMA)) {
+                paramIndex++;
                 next();
-                expr();
+                type = expr();
+                if(paramList.get(paramIndex).getType() != type) {
+                    error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected");
+                }
             }
         }
         
         // Factor ::= BasicValue | “(” Expression “)” | “!” Factor | “nil” 
         // | ObjectCreation | PrimaryExpr
         // ObjectCreation syntatic analysis in primaryExpr() to solve ambiguity
-        private void factor() {
+        private Type factor() {
+            Type type = Type.undefinedType;
             if(checkPass(Token.LEFTPAR)) {
                 next();
-                expr();
+                type = expr();
                 check(Token.RIGHTPAR, "')' expected");
                 next();
             } else if(checkPass(Token.NOT)) {
                 next();
-                factor();
+                type = factor();
+                
+                if(type != Type.booleanType) {
+                    error("Invalid type: Boolean expected");
+                }
             } else if(checkPass(Token.NULL)) {
                 next();
+                type = Type.nullType;
             } else if(checkPass(Token.ID, Token.SELF, Token.SUPER)){
-                primaryExpr();
+                return(primaryExpr());
             } else if(checkPass(Token.LITERALINT, Token.TRUE, Token.FALSE, Token.LITERALSTRING)) {
+                switch(lexer.token) {
+                    case LITERALINT:
+                        type = Type.intType;
+                        break;
+                    case TRUE:
+                        type = Type.booleanType;
+                        break;
+                    case FALSE:
+                        type = Type.booleanType;
+                        break;
+                    case LITERALSTRING:
+                        type = Type.stringType;
+                        break;
+                }
                 next();
             } else {
                 error("Expression expected");
                 //error("Factor (Literal int, boolean, literal string, identifier, '(', '!', 'nil', 'self' or 'super') expected");
             }
+            return(type);
         }
         
         // FormalParamDec ::= ParamDec { “,” ParamDec }
@@ -741,13 +912,19 @@ public class Compiler {
         
         // ObjectCreation ::= Id “.” “new”
         // ObjectCreation syntatic analysis in primaryExpr() to solve ambiguity
-        private void objectCreation() {
+        private Type objectCreation(String classId) {
+            CianetoClass foundClass = (CianetoClass) symbolTable.getInGlobal(classId);
+            if(foundClass == null) {
+                error("Class '"+classId+"' not declared");
+            }
             //check(Token.ID, "Identifier expected");
             //next();
             //check(Token.DOT, "'.' expected");
             //next();
             check(Token.NEW, "'new' expected");
             next();
+            
+            return(foundClass);
         }
         
         // ParamDec ::= Type Id
@@ -768,7 +945,8 @@ public class Compiler {
         
         // ReadExpr ::= “In” “.” ( “readInt” | “readString” )
         // ReadExpr syntatic analysis in primaryExpr() to solve ambiguity
-        private void readExpr() {
+        private Type readExpr() {
+            Type type = Type.undefinedType;
             //check(Token.ID, "Identifier expected");
             //if(lexer.getStringValue().equals("In")) {
             //    next();
@@ -778,6 +956,7 @@ public class Compiler {
                 
                 check(Token.ID, "Identifier expected");
                 if(lexer.getStringValue().equals("readInt") || lexer.getStringValue().equals("readString")) {
+                    type = lexer.getStringValue().equals("readInt") ? Type.intType : Type.stringType ;
                     next();
                 } else {
                     error("'readInt' or 'readString' expected");
@@ -785,6 +964,7 @@ public class Compiler {
             //} else {
             //    error("'In' expected");
             //}
+            return(type);
         }
         
         // PrimaryExpr ::= “super” “.” IdColon ExpressionList |
@@ -794,26 +974,78 @@ public class Compiler {
         // ReadExpr
         // ObjectCreation syntatic analysis in primaryExpr() to solve ambiguity
         // ReadExpr syntatic analysis in primaryExpr() to solve ambiguity
-        private void primaryExpr() {
+        private Type primaryExpr() {
+            Type type = Type.undefinedType;
             switch(lexer.token) {
                 case ID:
+                    String localId = lexer.getStringValue();
                     next();
                     
                     if(checkPass(Token.DOT)) {
+                        String instanceId = localId;
                         next();
                         
                         if(checkPass(Token.NEW)) {
-                            objectCreation();
+                            type = objectCreation(localId);
                         } else if(checkPass(Token.ID)) {
                             if(lexer.getStringValue().equals("readInt") || lexer.getStringValue().equals("readString")) {
-                                readExpr();
+                                type = readExpr();
                             } else {
+                                String memberId = lexer.getStringValue();
                                 next();
+                                
+                                Member fieldFound = (Member) symbolTable.getInLocal(instanceId);
+                                if(fieldFound == null) {
+                                    error("'"+instanceId+"' not declared");
+                                }
+                                Type classType = fieldFound.getType();
+                                CianetoClass classFound = (CianetoClass) symbolTable.getInGlobal(classType.getName());
+                                
+                                if(classFound == null) {
+                                    error("'"+instanceId+"' not declared");
+                                } else {
+                                    Member memberFound = classFound.findPublicField(memberId);
+                                    
+                                    if(memberFound == null && (memberFound = (Member) classFound.findOutMethod(memberId)) == null) {
+                                        error("Class '"+instanceId+"' has no public field or method '"+memberId+"'");
+                                    } else {
+                                        type = memberFound.getType();
+                                    }
+                                }
                             }
                         } else {
-                            check(Token.IDCOLON, "Identifier, identifer: or 'new' expected");
+                            check(Token.IDCOLON, "Identifier, identifier: or 'new' expected");
+                            String methodId = lexer.getStringValue();
                             next();
-                            exprList();
+                            
+                            Member fieldFound = (Member) symbolTable.getInLocal(instanceId);
+                            if(fieldFound == null) {
+                                error("'"+instanceId+"' not declared");
+                            }
+                            Type classType = fieldFound.getType();
+                            CianetoClass classFound = (CianetoClass) symbolTable.getInGlobal(classType.getName());
+                            
+                            Method methodFound = null;
+                            if(classFound == null) {
+                                error("'"+instanceId+"' not declared");
+                            } else {
+                                methodFound = classFound.findOutMethod(methodId);
+
+                                if(methodFound == null) {
+                                    error("Class '"+instanceId+"' or superclass has no public method '"+methodId+"'");
+                                } else {
+                                    type = methodFound.getType();
+                                }
+                            }
+                            
+                            exprList(methodFound);
+                        }
+                    } else {
+                        Member localFound = (Member) symbolTable.getInLocal(localId);
+                        if(localFound == null) {
+                            error("'"+localId+"' not declared");
+                        } else {
+                            type = localFound.getType();
                         }
                     }
                     break;
@@ -824,82 +1056,199 @@ public class Compiler {
                         next();
                         
                         if(checkPass(Token.ID)) {
+                            String memberId = lexer.getStringValue();
                             next();
                             
                             if(checkPass(Token.DOT)) {
+                                Field fieldFound = currentClass.findPrivateField(memberId);
                                 next();
                                 
-                                if(checkPass(Token.ID)) {
-                                    next();
+                                if(fieldFound == null) {
+                                    error("Class '"+currentClass.getName()+"' or superclass has no field '"+memberId+"'");
                                 } else {
-                                    check(Token.IDCOLON, "Identifier or identifer: expected");
-                                    next();
-                                    exprList();
+                                    Type classType = fieldFound.getType();
+                                    CianetoClass classFound = (CianetoClass) symbolTable.getInGlobal(classType.getName());
+                                
+                                    if(checkPass(Token.ID)) {
+                                        String methodId = lexer.getStringValue();
+
+                                        Method method = classFound.findOutMethod(methodId);
+                                        if(method == null) {
+                                            error("Method '"+methodId+"' not declared on class '"+type.getName()+"'");
+                                        }
+                                        type = method.getType();
+                                        next();
+                                    } else {
+                                        check(Token.IDCOLON, "Identifier or identifier: expected");
+                                        String methodId = lexer.getStringValue();
+                                        
+                                        Method method = classFound.findOutMethod(methodId);
+                                        
+                                        if(method == null) {
+                                            error("Method '"+methodId+"' not declared on class '"+type.getName()+"'");
+                                        }
+                                        type = method.getType();
+                                        next();
+                                        exprList(method);
+                                    }
+                                }
+                            } else {
+                                Field selfField = currentClass.findPrivateField(memberId);
+                                
+                                if(selfField != null) {
+                                    type = selfField.getType();
+                                } else {
+                                    Method selfMethod = currentClass.findInMethod(memberId);
+                                    if (selfMethod != null) {
+                                        type = selfMethod.getType();
+                                    } else {
+                                        error("Class '"+currentClass.getName()+"' has no method or field '"+memberId+"'");
+                                    }
                                 }
                             }
                         } else {
-                            check(Token.IDCOLON, "Identifier or identifer: expected");
+                            check(Token.IDCOLON, "Identifier or identifier: expected");
+                            String methodId = lexer.getStringValue();
                             next();
-                            exprList();
+                            
+                            Method methodFound = currentClass.findInMethod(methodId);
+                            if(methodFound == null) {
+                                error("Class '"+currentClass.getName()+"' or superclass has no public method '"+methodId+"'");
+                            } else {
+                                type = methodFound.getType();
+                            }
+                            
+                            exprList(methodFound);
                         }
+                    } else {
+                        return(currentClass);
                     }
                     break;
                 case SUPER:
+                    CianetoClass superClass = currentClass.getSuperclass();
+                    if (superClass == null) {
+                        error("Class '"+currentClass.getName()+"' has no superclass");
+                    }
                     next();
                     
                     check(Token.DOT, "'.' expected");
                     next();
                     
                     if (checkPass(Token.ID)) {
+                        String superMemberId = lexer.getStringValue();
                         next();
+                        
+                        Field superField = superClass.findPublicField(superMemberId);
+                        Method superMethod = superClass.findOutMethod(superMemberId);
+                        if(superField != null) {
+                            type = superField.getType();
+                        } else if (superMethod != null) {
+                            type = superMethod.getType();
+                        } else {
+                            error("'"+currentClass.getName()+"' superclass has no method or field '"+superMemberId+"'");
+                        }
                     } else {
-                        check(Token.IDCOLON, "Identifier or identifer: expected");
+                        check(Token.IDCOLON, "Identifier or identifier: expected");
+                        String superMemberId = lexer.getStringValue();
                         next();
-                        exprList();
+                        
+                        Method superMethod = superClass.findOutMethod(superMemberId);
+                        if (superMethod != null) {
+                            type = superMethod.getType();
+                        } else {
+                            error("'"+currentClass.getName()+"' superclass has no method or field '"+superMemberId+"'");
+                        }
+                        exprList(superMethod);
                     }
                     break;
                 default:
                     error("Identifier, 'self' or 'super' expected");
                     break;
             }
+            return(type);
         }
         
         // SignalFactor ::= [ Signal ] Factor
-        private void signalFactor() {
+        private Type signalFactor() {
             if (checkPass(Token.PLUS, Token.MINUS)) {
+                Token signal = lexer.token;
                 next();
+                
+                Type type = factor();
+                
+                if (type != Type.intType) {
+                    error("Invalid type for '"+signal+"' signal");
+                }
+                return(type);
+            } else {
+                return(factor());
             }
-            factor();
         }
         
         // SimpleExpression ::= SumSubExpression { “++” SumSubExpression }
-        private void simpleExpr() {
-            sumSubExpr();
+        private Type simpleExpr() {
+            Type ltype = sumSubExpr();
             
             while(checkPass(Token.COMCAT)) {
                 next();
-                sumSubExpr();
+                Type rtype = sumSubExpr();
+                if((ltype == Type.intType || ltype == Type.stringType) && (rtype == Type.intType || rtype == Type.stringType)) {
+                    ltype = Type.stringType;
+                } else {
+                    error("Invalid types ("+ltype.getName()+", "+rtype.getName()+") for concatenation: Int or String expected");
+                }
             }
+            return(ltype);
         }
         
         // SumSubExpression ::= Term { LowOperator Term }
-        private void sumSubExpr() {
-            term();
-            
+        private Type sumSubExpr() {
+            Type ltype = term();
             while(checkPass(Token.PLUS, Token.MINUS, Token.OR)) {
+                Token relation =  lexer.token;
                 next();
-                term();
+                Type rtype = term();
+                
+                if (relation == Token.PLUS || relation == Token.MINUS) {
+                    if(ltype == Type.intType && rtype == Type.intType) {
+                        return(Type.intType);
+                    } else {
+                        error("Invalid type for operation: Int expected");
+                    }
+                } else {
+                    if(ltype == Type.booleanType && rtype == Type.booleanType) {
+                        return(Type.booleanType);
+                    } else {
+                        error("Invalid type for operation: Boolean expected");
+                    }
+                }
             }
+            return(ltype);
         }
         
         // Term ::= SignalFactor { HighOperator SignalFactor }
-        private void term() {
-            signalFactor();
-            
+        private Type term() {
+            Type ltype = signalFactor();
             while(checkPass(Token.MULT, Token.DIV, Token.AND)) {
+                Token relation = lexer.token;
                 next();
-                signalFactor();
+                Type rtype = signalFactor();
+                
+                if (relation == Token.MULT || relation == Token.DIV) {
+                    if(ltype == Type.intType && rtype == Type.intType) {
+                        return(Type.intType);
+                    } else {
+                        error("Invalid type for operation: Int expected");
+                    }
+                } else {
+                    if(ltype == Type.booleanType && rtype == Type.booleanType) {
+                        return(Type.booleanType);
+                    } else {
+                        error("Invalid type for operation: Boolean expected");
+                    }
+                }
             }
+            return(ltype);
         }
         
         // --------------------------------------------------- //
@@ -907,5 +1256,7 @@ public class Compiler {
 	private SymbolTable     symbolTable;
 	private Lexer           lexer;
 	private ErrorSignaller  signalError;
+        private CianetoClass    currentClass;
+        private Method          currentMethod;
 
 }

@@ -2,7 +2,6 @@
 
 package ast;
 
-public class Expr {
-
+public class WriteStatement extends Statement {
     
 }

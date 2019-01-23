@@ -10,8 +10,10 @@ import java.util.ArrayList;
 public class CianetoClass extends Type {
     private final boolean open;
     private CianetoClass superclass = null;
-    private ArrayList<Field> publicFieldList, privateFieldList;
-    private ArrayList<Method> publicMethodList, privateMethodList;
+    private ArrayList<Field> publicFieldList = new ArrayList<>();
+    private ArrayList<Field> privateFieldList = new ArrayList<>();;
+    private ArrayList<Method> publicMethodList = new ArrayList<>();;
+    private ArrayList<Method> privateMethodList = new ArrayList<>();;
 
     public CianetoClass(String name, boolean open) {
         super(name);
@@ -23,14 +25,99 @@ public class CianetoClass extends Type {
     }
     
     /*
+        Searches for a method in all hierarchy from inside class
+    */
+    public Method findInMethod(String id) {
+        if(privateMethodList != null && !privateMethodList.isEmpty()) {
+            for (Method m : privateMethodList) {
+                if(m.getIdentifier().equals(id)) {
+                    return m;
+                }
+            }
+        }
+        
+        if(publicMethodList != null && !publicMethodList.isEmpty()) {
+            for (Method m : publicMethodList) {
+                if(m.getIdentifier().equals(id)) {
+                    return m;
+                }
+            }
+        }
+        
+        if(this.superclass != null) {
+            return superclass.findOutMethod(id);
+        }
+        
+        return null;
+    }
+    
+    /*
+        Searches for a method in all hierarchy from outside class
+    */
+    public Method findOutMethod(String id) {
+        if(publicMethodList != null && !publicMethodList.isEmpty()) {
+            for (Method m : publicMethodList) {
+                if(m.getIdentifier().equals(id)) {
+                    return m;
+                }
+            }
+        }
+        
+        if(this.superclass != null) {
+            return superclass.findOutMethod(id);
+        }
+        
+        return null;
+    }
+    
+    /*
         Return public method for a certain identifier or null if none is found
     */
     public Method findPublicMethod(String id) {
-        for (Method m : publicMethodList) {
-            if(m.getIdentifier().equals(id)) {
-                return m;
+        if(publicMethodList != null && !publicMethodList.isEmpty()) {
+            for (Method m : publicMethodList) {
+                if(m.getIdentifier().equals(id)) {
+                    return m;
+                }
             }
         }
+        return null;
+    }
+    
+    /*
+        Return public field for a certain identifier or null if none is found
+    */
+    public Field findPublicField(String id) {
+        if(publicFieldList != null && !publicFieldList.isEmpty()) {
+            for (Field f : publicFieldList) {
+                if(f.getIdentifier().equals(id)) {
+                    return f;
+                }
+            }
+        }
+        return null;
+    }
+    
+    /*
+        Return private field for a certain identifier or null if none is found
+    */
+    public Field findPrivateField(String id) {
+        if(privateFieldList != null && !(privateFieldList.isEmpty())) {
+            for (Field f : privateFieldList) {
+                if(f.getIdentifier().equals(id)) {
+                    return f;
+                }
+            }
+        }
+        
+        if(publicFieldList != null && !(publicFieldList.isEmpty())) {
+            for (Field f : publicFieldList) {
+                if(f.getIdentifier().equals(id)) {
+                    return f;
+                }
+            }
+        }
+        
         return null;
     }
 

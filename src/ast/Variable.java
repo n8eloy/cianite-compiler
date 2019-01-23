@@ -2,8 +2,8 @@
 
 package ast;
 
-public class Param extends Member {
-    public Param(Type type, String identifier) {
+public class Variable extends Member {
+    public Variable(Type type, String identifier) {
         super(null, type, identifier);
     }
 }

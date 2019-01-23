@@ -8,8 +8,4 @@ public class NullExpr extends Expr {
       pw.printIdent("NULL");
    }
    
-   public Type getType() {
-      //# corrija
-      return null;
-   }
 }
