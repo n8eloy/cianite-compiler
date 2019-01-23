@@ -20,9 +20,7 @@ class Program
 
         r = "Ola";
         s = "Tudo bem?";
-        if ( (r == s) && (r != s) && (r == nil) && (nil == r) &&
-            (r == "Ola") && ("Ola" == r) && (r != nil) && (r != "Ola") &&
-            ("Ola" != r) && ("nil" == nil) ) {
+        if ( (r == s) && (r != s) && (r == nil) && (nil == r) && (r == "Ola") && ("Ola" == r) && (r != nil) && (r != "Ola") && ("Ola" != r) && ("nil" == nil) ) {
             Out.println: "impossivel";
         }
     }

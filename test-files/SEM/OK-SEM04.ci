@@ -19,8 +19,7 @@ class Program
       e = true;
       f = false;
 
-      if  (a == b) && (a == 1) && (1 == b) && (a != b) && (e == f)
-           && (true == f) && (e != f) && (true != f)  {
+      if  (a == b) && (a == 1) && (1 == b) && (a != b) && (e == f) && (true == f) && (e != f) && (true != f)  {
          Out.println: "impossivel";
       }
    }  
