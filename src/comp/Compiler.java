@@ -763,25 +763,31 @@ public class Compiler {
             if(checkPass(Token.ASSIGN)) {
                 next();
                 Type rtype = expr();
-                
+                boolean A;
                 if((ltype.getClass() != CianetoClass.class && ltype != rtype) || (ltype == Type.nullType)) {
                     error("Invalid assignment between types '"+ltype.getName()+"' and '"+rtype.getName()+"'");
-                } else if (ltype.getClass() == CianetoClass.class && rtype.getClass() == CianetoClass.class) {
-                    CianetoClass lclass = (CianetoClass) ltype;
-                    CianetoClass rclass = (CianetoClass) rtype;
-                    boolean found = false;
+                } else if (ltype.getClass() == CianetoClass.class ){
+                    if (rtype.getClass() == CianetoClass.class) {
+                        CianetoClass lclass = (CianetoClass) ltype;
+                        CianetoClass rclass = (CianetoClass) rtype;
+                        boolean found = false;
 
-                    while(rclass != null && found == false) {
-                        if(lclass.getName().equals(rclass.getName())) {
-                            found = true;
+                        while(rclass != null && found == false) {
+                            if(lclass.getName().equals(rclass.getName())) {
+                                found = true;
+                            }
+                            rclass = rclass.getSuperclass();
                         }
-                        rclass = rclass.getSuperclass();
+                        rclass = (CianetoClass) rtype;
+                        if(!found) {
+                            error("Invalid assignment between unrelated classes '"+lclass.getName()+"' and '"+rclass.getName()+"'");
+                        }
+                    }
+                    else if (rtype != Type.nullType){
+                        error("Invalid assignment between Class '"+ltype.getName()+"' and type'"+rtype.getName()+"'");
                     }
                     
-                    if(!found) {
-                        error("Invalid assignment between unrelated classes '"+lclass.getName()+"' and '"+rclass.getName()+"'");
-                    }
-                }
+                } 
             }
             return new AssignStatement();
         }
@@ -834,11 +840,20 @@ public class Compiler {
                             }
                             rclass = rclass.getSuperclass();
                         }
+                        rclass = (CianetoClass) rtype;
+                        while(lclass != null && found == false) {
+                            if(lclass.getName().equals(rclass.getName())) {
+                                found = true;
+                            }
+                            lclass = lclass.getSuperclass();
+                        }
+                        
                         
                         if(found) {
                             return(Type.booleanType);
                         } else {
-                            error("Invalid classes '"+lclass.getName()+"' and '"+rclass.getName()+"' for comparison");
+                            error("Incompatible types cannot be compared with '==' because the results will always be 'false'");
+                            //error("Invalid classes '"+lclass.getName()+"' and '"+rclass.getName()+"' for comparison");
                         }
                     } else {
                         error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for comparison");
@@ -915,7 +930,8 @@ public class Compiler {
                 error("Expression expected");
                 //error("Factor (Literal int, boolean, literal string, identifier, '(', '!', 'nil', 'self' or 'super') expected");
             }
-            System.out.print("   <5>   ");
+            System.out.print("   <5>   "+lexer.token);
+            
             return(type);
         }
         
@@ -954,6 +970,9 @@ public class Compiler {
         private ArrayList<Member> member(CianetoClass currClass, Qualifier qualifier) {
             ArrayList<Member> memberList = new ArrayList<>();
             if(checkPass(Token.VAR)) {
+                if(qualifier == Qualifier.PU){
+                    error("Attempt to declare public instance variable 'i'");
+                }
                 memberList.addAll(fieldDec(qualifier));
             } else if(checkPass(Token.FUNC)) {
                 memberList.add(methodDec(currClass, qualifier));
@@ -1117,7 +1136,7 @@ public class Compiler {
                                 next();
                                 
                                 if(fieldFound == null) {
-                                    error("Class '"+currentClass.getName()+"' or superclass has no field '"+memberId+"'");
+                                                        error("Class '"+currentClass.getName()+"' or superclass has no field '"+memberId+"'");
                                 } else {
                                     Type classType = fieldFound.getType();
                                     CianetoClass classFound = (CianetoClass) symbolTable.getInGlobal(classType.getName());
@@ -1292,18 +1311,19 @@ public class Compiler {
                 Token relation = lexer.token;
                 next();
                 Type rtype = signalFactor();
-                
                 if (relation == Token.MULT || relation == Token.DIV) {
                     if(ltype == Type.intType && rtype == Type.intType) {
+                        System.out.print("RETURN1");
                         return(Type.intType);
                     } else {
                         error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for operation: Int expected");
                     }
                 } else {
-                    if(ltype == Type.booleanType && rtype == Type.booleanType) {
-                        return(Type.booleanType);
-                    } else {
+                    if(ltype != Type.booleanType || rtype != Type.booleanType) {
                         error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for operation: Boolean expected");
+                    } else {
+                        //System.out.print("RETURN2");
+                        //return(Type.booleanType);
                     }
                 }
             }

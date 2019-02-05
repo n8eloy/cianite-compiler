@@ -1,12 +1,13 @@
-// LaboratÃ³rio de Compiladores - Nathan Eloy, Victor Watanabe
-
 package comp;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import ast.MetaobjectAnnotation;
 import ast.Program;
@@ -32,6 +33,7 @@ public class Comp {
 			shouldButWereNotList = new ArrayList<>();
 			wereButShouldNotList = new ArrayList<>();
 			wereButWrongLineList = new ArrayList<>();
+			nullPointerAndOtherExceptionsList = new ArrayList<>();
 			correctList = new ArrayList<>();
 			numSourceFilesWithAnnotNCE = 0;
 
@@ -73,13 +75,27 @@ public class Comp {
 						numSourceFiles++;
 						try {
 							Program program = compileProgram(f, filename, outError);
-							programList.add(program);
-						} catch (RuntimeException e ) {
+							/*
+							 *
+							 * correct: the report should tell when program == null and
+							 * when an exception was thrown by the compiler.
+							 */
+							if ( program == null ) {
+								nullPointerAndOtherExceptionsList.add(filename);
+								outError.flush();
+							}
+							else {
+								programList.add(program);
+							}
+						}
+						catch (RuntimeException e ) {
+							nullPointerAndOtherExceptionsList.add(filename);
 							System.out.println("Runtime exception");
 						}
 						catch (Throwable t) {
-							t.printStackTrace();
+							nullPointerAndOtherExceptionsList.add(filename);
 							System.out.println("Throwable exception");
+							//System.exit(0);
 						}
 					}
 				}
@@ -93,11 +109,16 @@ public class Comp {
 			}
 			else {
 				Program program = compileProgram(file, args[0], outError);
-				if ( numSourceFilesWithAnnotNCE == 0 && numSourceFilesWithAnnotCEP == 0 ) {
-					printErrorList(outError, program);
+				if ( program == null ) {
+					outError.flush();
 				}
 				else {
-					printReport(1, report);
+					if ( numSourceFilesWithAnnotNCE == 0 && numSourceFilesWithAnnotCEP == 0 ) {
+						printErrorList(outError, program);
+					}
+					else {
+						printReport(1, report);
+					}
 				}
 
 			}
@@ -152,11 +173,20 @@ public class Comp {
 
 
 		boolean compilerOk = true;
-		report.println("Relatï¿½rio do Compilador");
+		report.println("Relatório do Compilador");
 		report.println();
+		if ( this.nullPointerAndOtherExceptionsList.size() > 0 ) {
+			report.println( nullPointerAndOtherExceptionsList.size() +
+					" arquivos lançaram exceções que não foram capturadas pelo compilador ou houve algum problema e o método 'compileProgram' retornou 'null'. "
+					+ "A maioria delas é provavelmente NullPointerException. Estes arquivos são:");
+			for ( String fn : this.nullPointerAndOtherExceptionsList ) {
+				report.println("    " + fn);
+			}
+			report.println();
+		}
 		if ( numSourceFilesWithAnnotCEP > 0 ) {
 			report.println(this.shouldButWereNotList.size() + " de um total de " + numSourceFilesWithAnnotCEP +
-					" erros que deveriam ser sinalizados nï¿½o o foram (" +
+					" erros que deveriam ser sinalizados não o foram (" +
 					(int ) (100.0*this.shouldButWereNotList.size()/this.numSourceFilesWithAnnotCEP) + "%)");
 			report.println(this.wereButWrongLineList.size() + " erros foram sinalizados na linha errada ("
 					+ (int ) (100.0*this.wereButWrongLineList.size()/this.numSourceFilesWithAnnotCEP) + "%)");
@@ -176,7 +206,7 @@ public class Comp {
 			else {
 				compilerOk = false;
 				report.println();
-				report.println("Erros que deveriam ser sinalizados mas nï¿½o foram:");
+				report.println("Erros que deveriam ser sinalizados mas não foram:");
 				report.println();
 				for (String s : this.shouldButWereNotList) {
 					report.println(s);
@@ -185,7 +215,7 @@ public class Comp {
 			}
 
 			if ( wereButWrongLineList.size() == 0 ) {
-				report.println("Um ou mais arquivos de teste tinham erros, mas estes foram sinalizados nos nï¿½meros de linhas corretos");
+				report.println("Um ou mais arquivos de teste tinham erros, mas estes foram sinalizados nos números de linhas corretos");
 			}
 			else {
 				compilerOk = false;
@@ -202,12 +232,12 @@ public class Comp {
 		}
 		if ( numSourceFiles -  numSourceFilesWithAnnotCEP != 0  ) {
 			if ( wereButShouldNotList.size() == 0 ) {
-				report.println("O compilador nï¿½o sinalizou nenhum erro que nï¿½o deveria ter sinalizado");
+				report.println("O compilador não sinalizou nenhum erro que não deveria ter sinalizado");
 			}
 			else {
 				compilerOk = false;
 				report.println("######################################################");
-				report.println("Erros que foram sinalizados mas nï¿½o deveriam ter sido:");
+				report.println("Erros que foram sinalizados mas não deveriam ter sido:");
 				report.println();
 				for (String s : this.wereButShouldNotList) {
 					report.println(s);
@@ -219,12 +249,12 @@ public class Comp {
 		if ( correctList.size() > 0 ) {
 			report.println("######################################################");
 			report.print("Em todos os testes abaixo, o compilador sinalizou o erro na linha correta (quando o teste tinha erros) ");
-			report.print("ou nï¿½o sinalizou o erro (quando o teste Nï¿½O tinha erros). Mas ï¿½ necessï¿½rio conferir se as ");
-			report.print("mensagens emitidas pelo compilador sï¿½o compatï¿½veis com as mensagens de erro sugeridas pelas chamadas aos ");
+			report.print("ou não sinalizou o erro (quando o teste NÃO tinha erros). Mas é necessário conferir se as ");
+			report.print("mensagens emitidas pelo compilador são compatíveis com as mensagens de erro sugeridas pelas chamadas aos ");
 			report.print("metaobjetos dos testes. ");
 			report.println();
 			report.println();
-			report.println("A lista abaixo contï¿½m o nome do arquivo de teste, a mensagem que ele sinalizou e a mensagem sugerida pelo arquivo de teste");
+			report.println("A lista abaixo contém o nome do arquivo de teste, a mensagem que ele sinalizou e a mensagem sugerida pelo arquivo de teste");
 			report.println();
 			for (String s : this.correctList ) {
 				report.println(s);
@@ -233,9 +263,9 @@ public class Comp {
 		}
 		if ( compilerOk ) {
 			if ( numSourceFiles == 1 )
-				report.println("Para o caso de teste que vocï¿½ utilizou, o compilador estï¿½ correto");
+				report.println("Para o caso de teste que você utilizou, o compilador está correto");
 			else
-				report.println("Para os casos de teste que vocï¿½ utilizou, o compilador estï¿½ correto");
+				report.println("Para os casos de teste que você utilizou, o compilador está correto");
 
 		}
 
@@ -251,80 +281,46 @@ public class Comp {
 	 */
 	private Program compileProgram(File file, String filename, PrintWriter outError)  {
 		Program program;
-		FileReader stream;
+		char []input = new char[ (int ) file.length() + 1 ];
 		int numChRead;
 
-		try {
-			stream = new FileReader(file);
-		} catch ( FileNotFoundException e ) {
-			String msg = "Something wrong: file does not exist anymore";
-			outError.println(msg);
-			return null;
-		}
-		// one more character for '\0' at the end that will be added by the
-		// compiler
-		char []input = new char[ (int ) file.length() + 1 ];
+		try(BufferedReader in = new BufferedReader(
+					new InputStreamReader(
+							new FileInputStream(file), "Cp1252"));) {
 
-		try {
-			numChRead = stream.read( input, 0, (int ) file.length() );
+
+			numChRead = in.read( input, 0, (int ) file.length() );
 			if ( numChRead != file.length() ) {
-				outError.println("Read error in file " + filename);
-				stream.close();
+				outError.println("Read error in file '" + filename + "'. Probably there is some character that is not in the Character encoding Cp1252");
 				return null;
 			}
-			stream.close();
-		} catch ( IOException e ) {
+		}
+		catch (UnsupportedEncodingException e)
+		{
+			outError.println("Encoding UTF8 was not supported for file '" + filename + "'");
+			return null;
+		}
+		catch (Exception e)
+		{
 			String msg = "Error reading file " + filename;
 			outError.println(msg);
-			try { stream.close(); } catch (IOException e1) { }
 			return null;
 		}
 
-
 		Compiler compiler = new Compiler();
-
-
 		program = null;
-		// the generated code goes to a file and so are the errors
-		program  = compiler.compile(input, outError );
-		callMetaobjects(filename, program, outError);
+
+		try {
+			// the generated code goes to a file and so are the errors
+			program  = compiler.compile(input, outError );
+			callMetaobjects(filename, program, outError);
+		}
+		catch ( Throwable e ) {
+
+		}
 
 		return program;
-		/*
-           if ( ! program.hasCompilationErrors() ) {
 
-               String outputFileName;
-
-               int lastIndex;
-               if ( (lastIndex = filename.lastIndexOf('.')) == -1 )
-                  lastIndex = filename.length();
-               outputFileName = filename.substring(0, lastIndex);
-               if ( (lastIndex = filename.lastIndexOf('\\')) != -1 )
-            	   outputFileName = outputFileName.substring(lastIndex + 1);
-
-
-
-               FileOutputStream  outputStream;
-               try {
-            	   outputFileName = outputFileName + ".java";
-                  outputStream = new FileOutputStream(outputFileName);
-               } catch ( IOException e ) {
-                   String msg = "File " + outputFileName + " was not found";
-                   outError.println(msg);
-                   return ;
-               }
-               PrintWriter printWriter = new PrintWriter(outputStream);
-
-
-              PW pw = new PW();
-              pw.set(printWriter);
-              program.genJava( pw );
-              if ( printWriter.checkError() ) {
-                 outError.println("There was an error in the output");
-              }
-              printWriter.close();
-           }
-		 */
 	}
 
 
@@ -378,7 +374,7 @@ public class Comp {
 						// that the compiler signalled and the message of the test, given in @ce
 						correctList.add(filename + "\r\n" +
 								"The compiler message was: \"" + compilerMessage + "\"\r\n" +
-								"The 'ce' message is:      \"" + ceMessage + "\"\r\n" );
+								"The 'cep' message is:      \"" + ceMessage + "\"\r\n" );
 					}
 				}
 			}
@@ -401,6 +397,7 @@ public class Comp {
 
 	ArrayList<String> shouldButWereNotList, wereButShouldNotList, wereButWrongLineList, correctList;
 
+	ArrayList<String> nullPointerAndOtherExceptionsList;
 	/**
 	 * number of tests with errors. That is, the number of tests in which there is an metaobject annotation  {@literal @}cep.
 	 */
