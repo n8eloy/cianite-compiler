@@ -3,7 +3,7 @@ Vinicius Silva Salinas
 vinicius_salis@hotmail.com
 */
 
-@cep(23, "Testa a keyword 'ver' invalido", "")
+@cep(23, "Testa a keyword 'ver' invalido", "';' expected")
 
 class A
     var Int num1

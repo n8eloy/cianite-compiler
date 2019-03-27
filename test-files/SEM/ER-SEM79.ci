@@ -3,7 +3,7 @@ Gustavo Eda
 edapd12@gmail.com
 */
 
-@cep(6, "método run: com parâmetros",
+@cep(6, "mÃ©todo run: com parametros",
     "Method 'run:' of class 'Program' cannot take parameters",
     "comp.Compiler.classDec()")
 

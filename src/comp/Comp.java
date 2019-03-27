@@ -173,12 +173,12 @@ public class Comp {
 
 
 		boolean compilerOk = true;
-		report.println("Relatório do Compilador");
+		report.println("Relatï¿½rio do Compilador");
 		report.println();
 		if ( this.nullPointerAndOtherExceptionsList.size() > 0 ) {
 			report.println( nullPointerAndOtherExceptionsList.size() +
-					" arquivos lançaram exceções que não foram capturadas pelo compilador ou houve algum problema e o método 'compileProgram' retornou 'null'. "
-					+ "A maioria delas é provavelmente NullPointerException. Estes arquivos são:");
+					" arquivos lanï¿½aram exceï¿½ï¿½es que nï¿½o foram capturadas pelo compilador ou houve algum problema e o mï¿½todo 'compileProgram' retornou 'null'. "
+					+ "A maioria delas ï¿½ provavelmente NullPointerException. Estes arquivos sï¿½o:");
 			for ( String fn : this.nullPointerAndOtherExceptionsList ) {
 				report.println("    " + fn);
 			}
@@ -186,7 +186,7 @@ public class Comp {
 		}
 		if ( numSourceFilesWithAnnotCEP > 0 ) {
 			report.println(this.shouldButWereNotList.size() + " de um total de " + numSourceFilesWithAnnotCEP +
-					" erros que deveriam ser sinalizados não o foram (" +
+					" erros que deveriam ser sinalizados nï¿½o o foram (" +
 					(int ) (100.0*this.shouldButWereNotList.size()/this.numSourceFilesWithAnnotCEP) + "%)");
 			report.println(this.wereButWrongLineList.size() + " erros foram sinalizados na linha errada ("
 					+ (int ) (100.0*this.wereButWrongLineList.size()/this.numSourceFilesWithAnnotCEP) + "%)");
@@ -206,7 +206,7 @@ public class Comp {
 			else {
 				compilerOk = false;
 				report.println();
-				report.println("Erros que deveriam ser sinalizados mas não foram:");
+				report.println("Erros que deveriam ser sinalizados mas nï¿½o foram:");
 				report.println();
 				for (String s : this.shouldButWereNotList) {
 					report.println(s);
@@ -215,7 +215,7 @@ public class Comp {
 			}
 
 			if ( wereButWrongLineList.size() == 0 ) {
-				report.println("Um ou mais arquivos de teste tinham erros, mas estes foram sinalizados nos números de linhas corretos");
+				report.println("Um ou mais arquivos de teste tinham erros, mas estes foram sinalizados nos nï¿½meros de linhas corretos");
 			}
 			else {
 				compilerOk = false;
@@ -232,12 +232,12 @@ public class Comp {
 		}
 		if ( numSourceFiles -  numSourceFilesWithAnnotCEP != 0  ) {
 			if ( wereButShouldNotList.size() == 0 ) {
-				report.println("O compilador não sinalizou nenhum erro que não deveria ter sinalizado");
+				report.println("O compilador nï¿½o sinalizou nenhum erro que nï¿½o deveria ter sinalizado");
 			}
 			else {
 				compilerOk = false;
 				report.println("######################################################");
-				report.println("Erros que foram sinalizados mas não deveriam ter sido:");
+				report.println("Erros que foram sinalizados mas nï¿½o deveriam ter sido:");
 				report.println();
 				for (String s : this.wereButShouldNotList) {
 					report.println(s);
@@ -249,12 +249,12 @@ public class Comp {
 		if ( correctList.size() > 0 ) {
 			report.println("######################################################");
 			report.print("Em todos os testes abaixo, o compilador sinalizou o erro na linha correta (quando o teste tinha erros) ");
-			report.print("ou não sinalizou o erro (quando o teste NÃO tinha erros). Mas é necessário conferir se as ");
-			report.print("mensagens emitidas pelo compilador são compatíveis com as mensagens de erro sugeridas pelas chamadas aos ");
+			report.print("ou nï¿½o sinalizou o erro (quando o teste Nï¿½O tinha erros). Mas ï¿½ necessï¿½rio conferir se as ");
+			report.print("mensagens emitidas pelo compilador sï¿½o compatï¿½veis com as mensagens de erro sugeridas pelas chamadas aos ");
 			report.print("metaobjetos dos testes. ");
 			report.println();
 			report.println();
-			report.println("A lista abaixo contém o nome do arquivo de teste, a mensagem que ele sinalizou e a mensagem sugerida pelo arquivo de teste");
+			report.println("A lista abaixo contï¿½m o nome do arquivo de teste, a mensagem que ele sinalizou e a mensagem sugerida pelo arquivo de teste");
 			report.println();
 			for (String s : this.correctList ) {
 				report.println(s);
@@ -263,9 +263,9 @@ public class Comp {
 		}
 		if ( compilerOk ) {
 			if ( numSourceFiles == 1 )
-				report.println("Para o caso de teste que você utilizou, o compilador está correto");
+				report.println("Para o caso de teste que vocï¿½ utilizou, o compilador estï¿½ correto");
 			else
-				report.println("Para os casos de teste que você utilizou, o compilador está correto");
+				report.println("Para os casos de teste que vocï¿½ utilizou, o compilador estï¿½ correto");
 
 		}
 

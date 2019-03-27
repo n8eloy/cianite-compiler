@@ -44,11 +44,13 @@ public class Compiler {
 			catch( CompilerError e) {
 				// if there was an exception, there is a compilation error
 				thereWasAnError = true;
-				while ( lexer.token != Token.CLASS && lexer.token != Token.EOF ) {
+                                
+				while ( lexer.token != Token.CLASS && lexer.token != Token.EOF  ) {
 					try {
-						next();
+                                            next();
 					}
 					catch ( RuntimeException ee ) {
+                                                        
 						e.printStackTrace();
 						return program;
 					}
@@ -59,20 +61,16 @@ public class Compiler {
 				thereWasAnError = true;
 			}
 
-		}
-                
+		}                
                 CianetoClass progClass = (CianetoClass) symbolTable.getInGlobal("Program");
                 if(progClass != null) {
-                    Method runMethod = progClass.findPublicMethod("run");
-                    if(runMethod == null) {
-                        error("No method 'run' was declared in 'Program'");
-                    } else if(runMethod.getType() != Type.nullType) {
-                        error("Method 'run' must have no return");
+                } else {		
+                    try {
+                        error("No class 'Program' was declared");
                     }
-                } else {
-                    error("No class 'Program' was declared");
+                    catch( CompilerError e) {
+			}
                 }
-                
 		if ( !thereWasAnError && lexer.token != Token.EOF ) {
 			try {
 				error("End of file expected");
@@ -163,11 +161,12 @@ public class Compiler {
 			error("Identifier expected");
 		String className = lexer.getStringValue();
 		lexer.nextToken();
-                
+                                
                 // Verifies if class exists
                 if (symbolTable.getInGlobal(className) != null) {
                     error("Class '"+className+"' already declared");
                 }
+                
                 CianetoClass currClass = new CianetoClass(className, openClass);
                 // Puts class in global hashtable
                 symbolTable.putInGlobal(className, currClass);
@@ -209,22 +208,48 @@ public class Compiler {
 //                        }
 //                    }
 //                }
+                
+                if(currentClass.getName().equals("Program")) {
+                    Method runMethod = currentClass.findPublicMethod("run");
+                    if(runMethod == null) {		
+                        error("No method 'run' was declared in 'Program'");
+                    }
+                } 
 		if ( lexer.token != Token.END)
                     error("'end' expected");
-		lexer.nextToken();
+		lexer.nextToken(); 
                 symbolTable.eraseClass();
                 currentClass = null;
                 return(currClass);
 	}
 
 	private ArrayList<Member> memberList(CianetoClass currClass) {
+            
             ArrayList<Member> memberList = new ArrayList<>();
             while ( true ) {
                 Qualifier qualifier = qualifier();
                 if (checkPass(Token.VAR, Token.FUNC)) {
+                  //  try{
                         memberList.addAll(member(currClass, qualifier));
+                   // }
+                    //catch( CompilerError e){
+                      //  while ( lexer.token != Token.FUNC && lexer.token != Token.VAR && lexer.token != Token.EOF && lexer.token != 
+                        //        Token.PUBLIC && lexer.token != Token.PRIVATE && 
+                          //      lexer.token != Token.OVERRIDE && lexer.token != Token.FINAL && lexer.token != Token.END ) {
+                            //try{
+                              //  next();
+                            //}catch ( RuntimeException ee ) {
+                                                        
+				//		e.printStackTrace();
+				//		return memberList;
+				//	}
+			//}
+                    //}
+                    //catch ( RuntimeException e ) {
+			//e.printStackTrace();
+                   // }
                 } else {
-                        break;
+                    break;
                 }
             }
             return(memberList);
@@ -260,13 +285,12 @@ public class Compiler {
 
 	private Member methodDec(CianetoClass currClass, Qualifier qualifier) {                
             lexer.nextToken();
-
+            
             if (!(lexer.token == Token.ID || lexer.token == Token.IDCOLON) ){
                 error("An identifier or identifier: was expected after 'func'");
             }
             String identifier = lexer.getStringValue();
-            
-            if(symbolTable.getInClass(identifier) != null) {
+            if(symbolTable.getInClass(identifier) != null && ( (currClass.findInMethod(identifier)) != null || (currClass.findPrivateField(identifier) != null))){
                 error("'"+identifier+"' already declared");
             }
             
@@ -290,14 +314,22 @@ public class Compiler {
             Method method = new Method(qualifier, Type.nullType, identifier);
             symbolTable.putInClass(identifier, method);
             if(qualifier == Qualifier.PR) {
-                currentClass.addPrivateMethod(method);
+                if(currentClass.getName().equals("Program") && identifier.equals("run")) {
+                    error("Method 'run' of class 'Program' cannot be private");
+                }else{
+                    currentClass.addPrivateMethod(method);
+                }
             } else {
                 currentClass.addPublicMethod(method);
             }
 
             if ( lexer.token == Token.IDCOLON ) {
                 next();
-                method.setParamList(formalParamDec());
+                if(currentClass.getName().equals("Program") && identifier.equals("run:")) {
+                    error("Method 'run:' of class 'Program' cannot take parameter");
+                } else{
+                    method.setParamList(formalParamDec());
+                }    
             } else {
                 next();
             }
@@ -305,7 +337,11 @@ public class Compiler {
             if ( lexer.token == Token.MINUS_GT ) {
                 // method declared a return type
                 lexer.nextToken();
-                method.setType(type());
+                if(currentClass.getName().equals("Program") && identifier.equals("run")) {
+                    error("Method 'run' must have no return");
+                } else{
+                    method.setType(type());
+                }
             }
             
             
@@ -380,6 +416,7 @@ public class Compiler {
             if(currentMethod.getType() != Type.nullType && !currentMethod.isReturnDefined()) {
                 error("Return expected");
             }
+
                     
             // At end of func, all locals must be erased
             symbolTable.eraseLocal();
@@ -510,9 +547,25 @@ public class Compiler {
 	private Statement returnStat() {
 		next();
                 Type returnType = expr();
-                
-                if (currentMethod.getType() != returnType) {
-                    error("Invalid return type: "+currentMethod.getType()+" expected");
+                if((currentMethod.getType().getClass() != CianetoClass.class && currentMethod.getType() != returnType)) {
+                   error("Invalid return type: "+currentMethod.getType()+" expected");
+                } else if (currentMethod.getType().getClass() == CianetoClass.class ){
+                    if (returnType.getClass() == CianetoClass.class) {
+                        CianetoClass lclass = (CianetoClass) currentMethod.getType();
+                        CianetoClass rclass = (CianetoClass) returnType;
+                        boolean found = false;
+
+                        while(rclass != null && found == false) {
+                            if(lclass.getName().equals(rclass.getName())) {
+                                found = true;
+                            }
+                            rclass = rclass.getSuperclass();
+                        }
+                        rclass = (CianetoClass) returnType;
+                        if(!found) {
+                            error("Invalid assignment between unrelated classes '"+lclass.getName()+"' and '"+rclass.getName()+"'"); 
+                        }
+                    }
                 }
                 currentMethod.setReturnDefined(true);
                 return(new ReturnStatement(returnType));
@@ -759,9 +812,8 @@ public class Compiler {
         // AssignExpr ::= Expression [ “=” Expression ]
         private AssignStatement assignExpr() {
             Type ltype = expr();
-            
             if(checkPass(Token.ASSIGN)) {
-                next();
+                next();                            
                 Type rtype = expr();
                 boolean A;
                 if((ltype.getClass() != CianetoClass.class && ltype != rtype) || (ltype == Type.nullType)) {
@@ -780,7 +832,7 @@ public class Compiler {
                         }
                         rclass = (CianetoClass) rtype;
                         if(!found) {
-                            error("Invalid assignment between unrelated classes '"+lclass.getName()+"' and '"+rclass.getName()+"'");
+                            error("Invalid assignment between unrelated classes '"+lclass.getName()+"' and '"+rclass.getName()+"'"); 
                         }
                     }
                     else if (rtype != Type.nullType){
@@ -827,7 +879,7 @@ public class Compiler {
                     if ((ltype == Type.stringType && rtype == Type.stringType) ||
                         (ltype == Type.intType && rtype == Type.intType) ||
                         (ltype == Type.booleanType && rtype == Type.booleanType) ||
-                        ((ltype == Type.stringType || rtype == Type.stringType) && (ltype == Type.nullType || rtype == Type.nullType))) {
+                        ((ltype == Type.stringType ||(ltype.getClass() == CianetoClass.class) ||(rtype.getClass() == CianetoClass.class) || rtype == Type.stringType) && (ltype == Type.nullType || rtype == Type.nullType))) {
                         return(Type.booleanType);
                     } else if ((ltype.getClass() == CianetoClass.class) && (rtype.getClass() == CianetoClass.class)) {
                         CianetoClass lclass = (CianetoClass) ltype;
@@ -847,13 +899,14 @@ public class Compiler {
                             }
                             lclass = lclass.getSuperclass();
                         }
+                        lclass = (CianetoClass) ltype;
                         
                         
                         if(found) {
                             return(Type.booleanType);
                         } else {
-                            error("Incompatible types cannot be compared with '==' because the results will always be 'false'");
-                            //error("Invalid classes '"+lclass.getName()+"' and '"+rclass.getName()+"' for comparison");
+                            //error("Incompatible types cannot be compared with '==' because the results will always be 'false'");
+                            error("Invalid classes '"+lclass.getName()+"' and '"+rclass.getName()+"' for comparison");
                         }
                     } else {
                         error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for comparison");
@@ -869,9 +922,31 @@ public class Compiler {
             int paramIndex = 0;
             Type type = expr();
             ArrayList<Param> paramList = m.getParamList();
-            
             if(paramList.get(paramIndex).getType() != type) {
-                error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected");
+                Type paramtype = paramList.get(paramIndex).getType();
+                if (paramtype.getClass() == CianetoClass.class ){
+                    if (type.getClass() == CianetoClass.class) {
+                        CianetoClass lclass = (CianetoClass) paramtype;
+                        CianetoClass rclass = (CianetoClass) type;
+                        boolean found = false;
+
+                        while(rclass != null && found == false) {
+                            if(lclass.getName().equals(rclass.getName())) {
+                                found = true;
+                            }
+                            rclass = rclass.getSuperclass();
+                        }
+                        rclass = (CianetoClass) type;
+                        if(!found){
+                           error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected"); 
+                        }
+                    } else if (type != Type.nullType){
+                        error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected"); 
+                    }
+                }else{
+                    error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected"); 
+                }
+                
             }
             
             while(checkPass(Token.COMMA)) {
@@ -879,7 +954,29 @@ public class Compiler {
                 next();
                 type = expr();
                 if(paramList.get(paramIndex).getType() != type) {
-                    error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected");
+                    Type paramtype = paramList.get(paramIndex).getType();
+                    if (paramtype.getClass() == CianetoClass.class ){
+                        if (type.getClass() == CianetoClass.class) {
+                            CianetoClass lclass = (CianetoClass) paramtype;
+                            CianetoClass rclass = (CianetoClass) type;
+                            boolean found = false;
+
+                            while(rclass != null && found == false) {
+                                if(lclass.getName().equals(rclass.getName())) {
+                                    found = true;
+                                }
+                                rclass = rclass.getSuperclass();
+                            }
+                            rclass = (CianetoClass) type;
+                            if(!found){
+                                error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected"); 
+                            }
+                        } else if (type != Type.nullType){
+                            error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected"); 
+                        }
+                    }else{
+                        error("Incompatible passed parameter "+paramIndex+" type: '"+paramList.get(paramIndex).getType()+"' expected"); 
+                    }
                 }
             }
         }
@@ -1313,7 +1410,6 @@ public class Compiler {
                 Type rtype = signalFactor();
                 if (relation == Token.MULT || relation == Token.DIV) {
                     if(ltype == Type.intType && rtype == Type.intType) {
-                        System.out.print("RETURN1");
                         return(Type.intType);
                     } else {
                         error("Invalid types '"+ltype.getName()+"' and '"+rtype.getName()+"' for operation: Int expected");
